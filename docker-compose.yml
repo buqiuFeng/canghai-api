@@ -1,0 +1,63 @@
+# 沧海 API 调试工具 一键部署（后端 + MySQL + Web 前端）
+# 使用：docker compose up -d --build
+services:
+  db:
+    image: mysql:8.0
+    container_name: canghai-api-db
+    restart: unless-stopped
+    environment:
+      # 实际密码请通过 .env 注入（MYSQL_ROOT_PASSWORD / MYSQL_PASSWORD），切勿提交明文
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: canghai_api
+      MYSQL_USER: canghai
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+    # 不向宿主机暴露 3306，仅允许 compose 内网访问，降低被攻破面
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      # 通过环境变量引用密码，避免与 MYSQL_ROOT_PASSWORD 双写漂移
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: canghai-api-server
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SERVER_PORT: "8092"
+      # 时区显式 Asia/Shanghai（UTC+8）：
+      #   connectionTimeZone=Asia/Shanghai      → 驱动按 UTC+8 理解 DATETIME
+      #   forceConnectionTimeZoneToSession=true → 会话时区也设为 UTC+8，
+      #                                           使 CURRENT_TIMESTAMP（server_update_time）与游标 NOW(3) 同源
+      # 需要 MySQL 已加载时区表（mysql.time_zone_*，官方镜像默认已加载）。
+      DB_URL: "jdbc:mysql://db:3306/canghai_api?useUnicode=true&characterEncoding=utf-8&useSSL=false&connectionTimeZone=Asia/Shanghai&forceConnectionTimeZoneToSession=true&allowPublicKeyRetrieval=true"
+      DB_USERNAME: canghai
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      # 生产部署：请勿把私钥打进镜像，改用 Docker Secret 挂载文件并设置此变量指向容器内路径，
+      # 例如 CANGHAI_JWT_PRIVATE_KEY: /run/secrets/canghai_jwt_private.pem
+    ports:
+      - "8092:8092"
+    volumes:
+      - server_data:/app/data
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: canghai-api-web
+    restart: unless-stopped
+    depends_on:
+      - server
+    ports:
+      - "8099:80"
+
+volumes:
+  db_data:
+  server_data:

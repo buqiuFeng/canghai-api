@@ -1,0 +1,32 @@
+name: contract-check
+
+# Phase 6.1：三端契约与 ORM 约定的静态校验，任一未登记差异即失败。
+# 本 workflow 不安装任何依赖（脚本仅使用 Node 内置模块），保证失败信号只来自契约本身。
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'client/apps/web/src/types/**'
+      - 'client/apps/desktop/src/db/**'
+      - 'spring-boot-server/src/main/java/**'
+      - 'spring-boot-server/src/main/resources/db/migration/**'
+      - 'docs/API_CONTRACT.md'
+      - 'scripts/contract-check.mjs'
+      - '.github/workflows/contract-check.yml'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  contract:
+    name: 契约一致性校验
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: contract-check
+        run: node scripts/contract-check.mjs
+      - name: dep-graph-check
+        run: node scripts/dep-graph-check.mjs

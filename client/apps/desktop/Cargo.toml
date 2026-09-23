@@ -1,0 +1,66 @@
+[package]
+name = "desktop"
+version = "0.1.1"
+edition = "2021"
+
+[lib]
+name = "desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[[bin]]
+name = "canghai-api-debugger"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# Tauri v2 必须启用基础特性（wry 渲染后端 + protocol 命令 IPC），
+# 否则 build script 不会为 invoke_handler 中的自定义命令自动生成 allow-* 权限，
+# 导致 capabilities/default.json 引用命令权限时报 "Permission ... not found"。
+tauri = { version = "2", features = ["tauri-runtime-wry", "dynamic-acl"] }
+tauri-plugin-shell = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# multipart：文件导入需要把文件以 multipart/form-data 上传到 Java 端（见 commands::sync::import_requests_file）。
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli", "deflate", "json", "stream", "multipart"] }
+rusqlite = { version = "0.31", features = ["bundled"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+tokio-tungstenite = { version = "0.24", features = ["rustls-tls-native-roots"] }
+futures-util = "0.3"
+url = "2"
+tiny_http = "0.12"
+# JWT 验证（在线模式）：Rust 端仅持公钥，用 RS256 验签，不持有私钥、无法伪造 token。
+# 默认 features 使用 rustls，与 reqwest(rustls-tls) 一致，避免 openssl 系统依赖。
+jsonwebtoken = "9"
+rustls-pemfile = "2"
+# 日志（jwt 验签等诊断用），配合 tauri 的 log 插件输出。
+log = "0.4"
+# 凭证安全存储：令牌写入系统钥匙串（Windows 凭据管理器 / macOS Keychain / Linux Secret Service），
+# 不再以明文落在 sync_config.json。
+#
+# ⚠️ keyring v3 **默认不启用任何平台后端**，必须显式开启对应平台的 feature（见文末 target 段），
+# 否则 `Entry::set_password` 会「静默成功」——既不报错也不真正落盘，而 `infra::save_config`
+# 会据此清掉配置文件里的明文兜底，导致令牌两头落空，表现为「登录成功 → 刷新即未登录」。
+keyring = "3"
+# 时间基准统一为 Asia/Shanghai（见 db::now_timestamp）：替代原先手写的「1970 起算日历换算」，
+# 消除闰年/时区手算风险；Utc 仅作为取「当前时刻」的来源，再按固定 +8 偏移格式化。
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+validator = { version = "0.21.0", features = ["derive"] }
+# 导入命令生成本地 UUID（与 Java 端 UUID 同语义，导入恒为新增）
+uuid = { version = "1", features = ["v4"] }
+# 解析 cURL 的 -u 用户凭据为 Basic 头
+base64 = "0.22"
+
+# 平台钥匙串后端：不声明则 keyring 无可用存储（见上方说明）。
+# 未覆盖的平台会因取不到后端而由 `infra::save_config` 自动回退为配置文件明文存储，
+# 保证「可用性优先」，而不会静默丢失登录态。
+[target.'cfg(target_os = "windows")'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

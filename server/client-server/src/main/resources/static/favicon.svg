@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="canghai">
+  <defs>
+    <linearGradient id="canghai-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E8BF7"/>
+      <stop offset="1" stop-color="#1257C9"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" ry="14" fill="url(#canghai-bg)"/>
+  <path d="M10 26c5.5-5.5 9 5.5 14.7 0S34.8 20.5 40.5 26s9 5.5 13.5 0" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"/>
+  <path d="M10 42c5.5-5.5 9 5.5 14.7 0S34.8 36.5 40.5 42s9 5.5 13.5 0" fill="none" stroke="#FFFFFF" stroke-opacity="0.65" stroke-width="5" stroke-linecap="round"/>
+</svg>

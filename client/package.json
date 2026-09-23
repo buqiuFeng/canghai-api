@@ -1,0 +1,10 @@
+{
+  "name": "canghai-api-doc",
+  "private": true,
+  "version": "0.1.1",
+  "scripts": {
+    "web:dev": "pnpm --filter web dev",
+    "dev": "pnpm --filter desktop tauri dev",
+    "build": "pnpm --filter web build && pnpm --filter desktop tauri build"
+  }
+}

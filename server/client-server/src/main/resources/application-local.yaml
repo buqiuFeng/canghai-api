@@ -1,0 +1,60 @@
+server:
+  port: 8092
+
+--- #################### 数据库相关配置 ####################
+spring:
+  datasource:
+    # 时区显式固定为 Asia/Shanghai（与 JVM 默认时区、Rust/前端的写入基准一致）：
+    #   connectionTimeZone=Asia/Shanghai          → 告诉驱动「服务端就是 UTC+8」，读写 DATETIME 时不按本机时区换算
+    #   forceConnectionTimeZoneToSession=true     → 把 MySQL 会话时区也设为 Asia/Shanghai，
+    #                                               使 NOW()/CURRENT_TIMESTAMP()（含 server_update_time 列）
+    #                                               与同步游标 NOW(3) 出自同一时钟
+    # 注：按名字设置会话时区依赖 MySQL 的 mysql.time_zone_* 表；若目标库未加载时区表，
+    #     可改用偏移写法 connectionTimeZone=%2B08:00 或改用 Druid connection-init-sqls。
+    url: "${DB_URL:jdbc:mysql://localhost:3306/canghai_api?connectionTimeZone=Asia/Shanghai&forceConnectionTimeZoneToSession=true}"
+    username: ${DB_USERNAME:root}
+    # 数据库密码仅从环境变量注入，禁止在仓库中留存明文默认值（Phase 3 密钥外置 / Phase 5 收敛）
+    password: ${DB_PASSWORD:}
+
+  # 数据库版本化迁移（Flyway）：db/migration 为 DDL 唯一事实源
+  # 新库：执行 V1__init_schema.sql 建表；存量库：自动 baseline（不重复建表），后续版本增量迁移
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    locations: classpath:db/migration
+    encoding: UTF-8
+    baseline-on-migrate: true
+    baseline-version: 1
+    baseline-description: "baseline: existing canghai_api schema"
+    out-of-order: false
+    # 本地开发可容忍脚本被手工改动；生产建议设为 true 以拦截校验和漂移
+    validate-on-migrate: ${FLYWAY_VALIDATE:false}
+    druid:
+      initial-size: 5
+      max-active: 20
+      min-idle: 5
+      max-wait: 60000
+      # 启用 Filter
+      filter:
+        stat:
+          enabled: true
+          log-slow-sql: true
+          slow-sql-millis: 2000
+        wall:
+          enabled: true
+
+# 日志配置
+logging:
+  level:
+    # SQL 调试默认关闭（会打印完整参数，含脚本/请求体）。排查时通过环境变量临时开启：
+    #   SQL_LOG_LEVEL=debug mvn spring-boot:run
+    com.canghai.api.mapper: ${SQL_LOG_LEVEL:info}
+
+debug: false
+
+canghai:
+  jwt:
+    # RSA 私钥路径（PKCS#8 PEM）。默认读取 classpath:keys/private.pem（已 gitignore，不入库）。
+    # 生产环境务必通过环境变量 CANGHAI_JWT_PRIVATE_KEY 指向密钥文件，切勿提交私钥。
+    private-key-path: ${CANGHAI_JWT_PRIVATE_KEY:}
+    # RSA 公钥路径（SPKI PEM）。默认读取 classpath:keys/public.pem（已随仓库提交，供 Java 端自验）。
+    public-key-path: ${CANGHAI_JWT_PUBLIC_KEY:}

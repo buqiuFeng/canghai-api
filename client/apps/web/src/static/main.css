@@ -1,0 +1,299 @@
+/* =========================================================
+ * 全局设计令牌
+ * 品牌色：靖蓝 → 紫罗兰 渐变
+ * =======================================================*/
+:root {
+  --brand-1: #6366f1;
+  --brand-2: #8b5cf6;
+  --brand-soft: #eef2ff;
+  --brand-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --bg: #f1f3f8;
+  --border: #e2e5ec;
+  --border-soft: #eceef4;
+  --divider: #ebeef3;
+
+  --text-1: #0f172a;
+  --text-2: #334155;
+  --text-3: #64748b;
+  --text-4: #94a3b8;
+
+  /* 代码块 / 响应体：两种主题下都保持深底浅字（终端观感） */
+  --code-bg: #0f172a;
+  --code-fg: #e2e8f0;
+
+  /* 提示/告警底色 */
+  --tint-warning: #fdf6ec;
+  --tint-danger: #fef0f0;
+
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+
+  --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-2: 0 1px 3px rgba(15, 23, 42, 0.04), 0 6px 18px -8px rgba(15, 23, 42, 0.08);
+  --shadow-3: 0 2px 8px rgba(15, 23, 42, 0.06), 0 12px 32px -12px rgba(15, 23, 42, 0.12);
+  --shadow-brand: 0 4px 14px -4px rgba(99, 102, 241, 0.40);
+  --shadow-inset: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+
+  --topbar-h: 52px;
+  --gap: 10px;
+
+  /* 动效 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 0.12s;
+  --duration-normal: 0.2s;
+  --duration-slow: 0.3s;
+
+  --el-color-primary: #6366f1;
+  --el-color-primary-light-3: #818cf8;
+  --el-color-primary-light-5: #a5b4fc;
+  --el-color-primary-light-7: #c7d2fe;
+  --el-color-primary-light-8: #ddd6fe;
+  --el-color-primary-light-9: #eef2ff;
+  --el-color-primary-dark-2: #4f46e5;
+
+  /* ===== 兼容别名 =====
+     历史样式混用了两套命名（--text / --text-muted / --bg-card / --primary / --card / --text-secondary…）。
+     这些变量此前未定义，导致相关声明整条失效并回退到 Element 默认蓝，造成「靛紫品牌色 vs Element 蓝」割裂。
+     在此统一映射到上方品牌令牌，一次性修复全局配色不一致。 */
+  --text: var(--text-1);
+  --text-secondary: var(--text-3);
+  --text-muted: var(--text-3);
+  --card: var(--surface);
+  --bg-card: var(--surface);
+  --hover: var(--surface-2);
+  --primary: var(--brand-1);
+  --primary-light: var(--brand-soft);
+  --border-strong: var(--border);
+
+  /* 间距刻度（8pt 栅格） */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* Element Plus 统一圆角与语义色，令按钮/输入/浮层观感一致 */
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+  --el-color-success: #10b981;
+  --el-color-warning: #f59e0b;
+  --el-color-danger: #ef4444;
+  --el-color-info: #64748b;
+
+  /* ===== 字号刻度（统一散落的 9~34px 与半像素值） ===== */
+  --fs-3xs: 9px;
+  --fs-2xs: 10px;
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-md: 13px;
+  --fs-lg: 14px;
+  --fs-xl: 15px;
+  --fs-2xl: 16px;
+  --fs-3xl: 20px;
+  --fs-4xl: 22px;
+  --fs-hero: 34px;
+
+  /* ===== 字重 / 行高 ===== */
+  --fw-normal: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.25;
+  --lh-snug: 1.45;
+  --lh-normal: 1.6;
+
+  /* ===== 图标尺寸 ===== */
+  --icon-xs: 12px;
+  --icon-sm: 14px;
+  --icon-md: 16px;
+  --icon-lg: 20px;
+
+  /* ===== 控件高度（密度） ===== */
+  --ctl-h-sm: 24px;
+  --ctl-h-md: 32px;
+  --ctl-h-lg: 40px;
+
+  /* Element Plus 密度对齐：控件高度与基础字号跟随令牌 */
+  --el-component-size-small: var(--ctl-h-sm);
+  --el-component-size: var(--ctl-h-md);
+  --el-component-size-large: var(--ctl-h-lg);
+  --el-font-size-base: var(--fs-md);
+  --el-font-size-small: var(--fs-sm);
+  --el-font-size-large: var(--fs-lg);
+}
+
+/* =========================================================
+ * 暗色主题（html.dark）
+ * 只覆盖「表面 / 中性 / 文本 / 阴影」令牌，品牌色与语义色保持不变；
+ * 兼容别名以 var() 引用基础令牌，故暗色下自动跟随，无需重复定义。
+ * Element Plus 组件由 element-plus/theme-chalk/dark/css-vars.css 接管。
+ * =======================================================*/
+html.dark {
+  --surface: #171a21;
+  --surface-2: #1d212b;
+  --bg: #0f1117;
+  --border: #2a2f3a;
+  --border-soft: #232833;
+  --divider: #262b36;
+
+  --text-1: #e8eaf1;
+  --text-2: #c4cad6;
+  --text-3: #99a1b3;
+  --text-4: #6b7386;
+
+  /* 代码块 / 响应体：暗色下加深底色，保持同色系终端观感 */
+  --code-bg: #0b0e14;
+  --code-fg: #cbd5e1;
+
+  /* 提示/告警底色：暗色下用半透明着色，避免浅底刺眼 */
+  --tint-warning: rgba(245, 158, 11, 0.14);
+  --tint-danger: rgba(239, 68, 68, 0.14);
+
+  --brand-soft: rgba(99, 102, 241, 0.18);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 1px 3px rgba(0, 0, 0, 0.5), 0 6px 18px -8px rgba(0, 0, 0, 0.6);
+  --shadow-3: 0 2px 8px rgba(0, 0, 0, 0.55), 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+  --shadow-brand: 0 4px 14px -4px rgba(99, 102, 241, 0.55);
+
+  /* 主色派生：暗色下 hover/背景用深靛，强调文字用亮靛 */
+  --el-color-primary-light-3: #7c83f5;
+  --el-color-primary-light-5: #5b5fd6;
+  --el-color-primary-light-7: #3f43a8;
+  --el-color-primary-light-8: #33367f;
+  --el-color-primary-light-9: #262956;
+  --el-color-primary-dark-2: #a5b4fc;
+}
+
+/* 基础 */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 滚动条：更细腻，悬停时加深，减少视觉噪音 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.7); background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* Element Plus 全局微调 */
+.el-input__wrapper {
+  border-radius: var(--r-sm) !important;
+  transition: box-shadow var(--duration-fast) var(--ease-out) !important;
+}
+.el-select .el-input__wrapper {
+  border-radius: var(--r-sm) !important;
+}
+.el-tabs__nav-wrap::after {
+  height: 1px !important;
+  background: var(--divider) !important;
+}
+.el-button {
+  transition: all var(--duration-fast) var(--ease-out) !important;
+}
+.el-tag {
+  border-radius: 6px !important;
+  font-weight: 500;
+}
+
+/* 卡片 / 弹窗 / 浮层：统一圆角与阴影，消除组件观感差异 */
+.el-card {
+  border-radius: var(--r-lg) !important;
+  border-color: var(--border-soft) !important;
+  box-shadow: var(--shadow-2) !important;
+}
+.el-dialog {
+  border-radius: var(--r-lg) !important;
+  overflow: hidden;
+  box-shadow: var(--shadow-3) !important;
+}
+.el-dialog__title {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.el-dropdown-menu,
+.el-select-dropdown {
+  border-radius: var(--r-md) !important;
+}
+.el-popper.is-light {
+  border-radius: var(--r-md) !important;
+  box-shadow: var(--shadow-3) !important;
+}
+.el-popper.is-dark {
+  border-radius: var(--r-sm) !important;
+}
+.el-message {
+  border-radius: var(--r-md) !important;
+  box-shadow: var(--shadow-3) !important;
+}
+.el-input__wrapper.is-focus,
+.el-textarea__inner:focus {
+  box-shadow: 0 0 0 1px var(--brand-1) inset !important;
+}
+
+/* 全局焦点样式 */
+:focus-visible {
+  outline: 2px solid rgba(99, 102, 241, 0.4);
+  outline-offset: 1px;
+  border-radius: 3px;
+}
+
+/* 图标统一：垂直居中，并提供尺寸工具类 */
+.el-icon { vertical-align: middle; }
+.icon-xs { font-size: var(--icon-xs) !important; }
+.icon-sm { font-size: var(--icon-sm) !important; }
+.icon-md { font-size: var(--icon-md) !important; }
+.icon-lg { font-size: var(--icon-lg) !important; }
+
+/* 空状态兜底：即便某处仍用 el-empty，也保持与 EmptyState 一致的观感 */
+.el-empty__image { width: 96px; }
+.el-empty__description { margin-top: 6px; }
+.el-empty__description p {
+  color: var(--text-3);
+  font-size: var(--fs-sm);
+}
+
+/* 选中文字颜色 */
+::selection {
+  background: rgba(99, 102, 241, 0.15);
+  color: inherit;
+}
+
+/* 链接/按钮的可点区域统一手腕反馈 */
+.el-button:not(.is-disabled):active {
+  transform: translateY(0.5px);
+}
+
+/* 尊重系统「减少动态效果」偏好（无障碍） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

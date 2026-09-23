@@ -1,0 +1,15 @@
+{
+    "harmonyos.devecoHome": "D:\\Program Files\\Huawei\\DevEco Studio",
+    "harmonyos.sdkHome": "D:\\Program Files\\Huawei\\DevEco Studio\\sdk",
+    "harmonyos.defaultBuildMode": "release",
+    "harmonyos.defaultProduct": "default",
+    "harmonyos.bundleName": "",
+    "harmonyos.abilityName": "EntryAbility",
+    "terminal.integrated.env.windows": {
+        "DEVECO_HOME": "D:\\Program Files\\Huawei\\DevEco Studio",
+        "DEVECO_SDK_HOME": "D:\\Program Files\\Huawei\\DevEco Studio\\sdk",
+        "OHOS_SDK_HOME": "D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default",
+        "JAVA_HOME": "D:\\Program Files\\Huawei\\DevEco Studio\\jbr",
+        "PATH": "D:\\Program Files\\Huawei\\DevEco Studio\\jbr\\bin;D:\\Program Files\\Huawei\\DevEco Studio\\tools\\node;D:\\Program Files\\Huawei\\DevEco Studio\\tools\\ohpm\\bin;D:\\Program Files\\Huawei\\DevEco Studio\\tools\\hvigor\\bin;D:\\Program Files\\Huawei\\DevEco Studio\\sdk\\default\\openharmony\\toolchains;${env:PATH}"
+    }
+}

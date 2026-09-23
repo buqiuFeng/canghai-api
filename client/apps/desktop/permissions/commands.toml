@@ -1,0 +1,348 @@
+# =============================================================
+# 应用自定义命令权限定义（Tauri v2）
+# -------------------------------------------------------------
+# Tauri v2 应用自身命令不会自动生成 allow-* 权限，需要在此显式声明。
+# 每个自定义命令对应一个 identifier = "allow-<command>" 的权限块，
+# 通过 commands.allow 列出原始命令函数名（下划线）。
+# 声明后即可在 capabilities/default.json 的 permissions 中引用。
+# =============================================================
+
+[[permission]]
+identifier = "allow-send-http-request"
+description = "允许调用 send_http_request 命令"
+commands.allow = ["send_http_request"]
+
+[[permission]]
+identifier = "allow-send-http-request-stream"
+description = "允许调用 send_http_request_stream 命令"
+commands.allow = ["send_http_request_stream"]
+
+[[permission]]
+identifier = "allow-get-projects"
+description = "允许调用 get_projects 命令"
+commands.allow = ["get_projects"]
+
+[[permission]]
+identifier = "allow-save-project"
+description = "允许调用 save_project 命令"
+commands.allow = ["save_project"]
+
+[[permission]]
+identifier = "allow-update-project"
+description = "允许调用 update_project 命令"
+commands.allow = ["update_project"]
+
+[[permission]]
+identifier = "allow-set-project-expanded"
+description = "允许调用 set_project_expanded 命令"
+commands.allow = ["set_project_expanded"]
+
+[[permission]]
+identifier = "allow-delete-project"
+description = "允许调用 delete_project 命令"
+commands.allow = ["delete_project"]
+
+[[permission]]
+identifier = "allow-get-project-members"
+description = "允许调用 get_project_members 命令"
+commands.allow = ["get_project_members"]
+
+[[permission]]
+identifier = "allow-add-project-member"
+description = "允许调用 add_project_member 命令"
+commands.allow = ["add_project_member"]
+
+[[permission]]
+identifier = "allow-remove-project-member"
+description = "允许调用 remove_project_member 命令"
+commands.allow = ["remove_project_member"]
+
+[[permission]]
+identifier = "allow-get-categories"
+description = "允许调用 get_categories 命令"
+commands.allow = ["get_categories"]
+
+[[permission]]
+identifier = "allow-save-category"
+description = "允许调用 save_category 命令"
+commands.allow = ["save_category"]
+
+[[permission]]
+identifier = "allow-update-category"
+description = "允许调用 update_category 命令"
+commands.allow = ["update_category"]
+
+[[permission]]
+identifier = "allow-set-category-expanded"
+description = "允许调用 set_category_expanded 命令"
+commands.allow = ["set_category_expanded"]
+
+[[permission]]
+identifier = "allow-set-environment-group-expanded"
+description = "允许调用 set_environment_group_expanded 命令"
+commands.allow = ["set_environment_group_expanded"]
+
+[[permission]]
+identifier = "allow-delete-category"
+description = "允许调用 delete_category 命令"
+commands.allow = ["delete_category"]
+
+[[permission]]
+identifier = "allow-get-history"
+description = "允许调用 get_history 命令"
+commands.allow = ["get_history"]
+
+[[permission]]
+identifier = "allow-get-history-limit"
+description = "允许调用 get_history_limit 命令"
+commands.allow = ["get_history_limit"]
+
+[[permission]]
+identifier = "allow-save-history"
+description = "允许调用 save_history 命令"
+commands.allow = ["save_history"]
+
+[[permission]]
+identifier = "allow-delete-history-item"
+description = "允许调用 delete_history_item 命令"
+commands.allow = ["delete_history_item"]
+
+[[permission]]
+identifier = "allow-clear-history"
+description = "允许调用 clear_history 命令"
+commands.allow = ["clear_history"]
+
+[[permission]]
+identifier = "allow-get-saved-requests"
+description = "允许调用 get_saved_requests 命令"
+commands.allow = ["get_saved_requests"]
+
+[[permission]]
+identifier = "allow-save-saved-request"
+description = "允许调用 save_saved_request 命令"
+commands.allow = ["save_saved_request"]
+
+[[permission]]
+identifier = "allow-update-saved-request"
+description = "允许调用 update_saved_request 命令"
+commands.allow = ["update_saved_request"]
+
+[[permission]]
+identifier = "allow-delete-saved-request"
+description = "允许调用 delete_saved_request 命令"
+commands.allow = ["delete_saved_request"]
+
+[[permission]]
+identifier = "allow-list-request-versions"
+description = "允许调用 list_request_versions 命令"
+commands.allow = ["list_request_versions"]
+
+[[permission]]
+identifier = "allow-get-request-version-snapshot"
+description = "允许调用 get_request_version_snapshot 命令（版本对比）"
+commands.allow = ["get_request_version_snapshot"]
+
+[[permission]]
+identifier = "allow-restore-request-version"
+description = "允许调用 restore_request_version 命令"
+commands.allow = ["restore_request_version"]
+
+[[permission]]
+identifier = "allow-get-environments"
+description = "允许调用 get_environments 命令"
+commands.allow = ["get_environments"]
+
+[[permission]]
+identifier = "allow-get-env-variables"
+description = "允许调用 get_env_variables 命令"
+commands.allow = ["get_env_variables"]
+
+[[permission]]
+identifier = "allow-get-active-env-variables"
+description = "允许调用 get_active_env_variables 命令"
+commands.allow = ["get_active_env_variables"]
+
+[[permission]]
+identifier = "allow-save-environment"
+description = "允许调用 save_environment 命令"
+commands.allow = ["save_environment"]
+
+[[permission]]
+identifier = "allow-update-environment"
+description = "允许调用 update_environment 命令"
+commands.allow = ["update_environment"]
+
+[[permission]]
+identifier = "allow-delete-environment"
+description = "允许调用 delete_environment 命令"
+commands.allow = ["delete_environment"]
+
+[[permission]]
+identifier = "allow-activate-environment"
+description = "允许调用 activate_environment 命令"
+commands.allow = ["activate_environment"]
+
+[[permission]]
+identifier = "allow-save-env-variable"
+description = "允许调用 save_env_variable 命令"
+commands.allow = ["save_env_variable"]
+
+[[permission]]
+identifier = "allow-update-env-variable"
+description = "允许调用 update_env_variable 命令"
+commands.allow = ["update_env_variable"]
+
+[[permission]]
+identifier = "allow-delete-env-variable"
+description = "允许调用 delete_env_variable 命令"
+commands.allow = ["delete_env_variable"]
+
+[[permission]]
+identifier = "allow-get-environment-groups"
+description = "允许调用 get_environment_groups 命令"
+commands.allow = ["get_environment_groups"]
+
+[[permission]]
+identifier = "allow-save-environment-group"
+description = "允许调用 save_environment_group 命令"
+commands.allow = ["save_environment_group"]
+
+[[permission]]
+identifier = "allow-update-environment-group"
+description = "允许调用 update_environment_group 命令"
+commands.allow = ["update_environment_group"]
+
+[[permission]]
+identifier = "allow-delete-environment-group"
+description = "允许调用 delete_environment_group 命令"
+commands.allow = ["delete_environment_group"]
+
+[[permission]]
+identifier = "allow-get-sync-config"
+description = "允许调用 get_sync_config 命令"
+commands.allow = ["get_sync_config"]
+
+[[permission]]
+identifier = "allow-set-sync-config"
+description = "允许调用 set_sync_config 命令"
+commands.allow = ["set_sync_config"]
+
+[[permission]]
+identifier = "allow-sync-data"
+description = "允许调用 sync_data 命令"
+commands.allow = ["sync_data"]
+
+[[permission]]
+identifier = "allow-pull-data"
+description = "允许调用 pull_data 命令"
+commands.allow = ["pull_data"]
+
+[[permission]]
+identifier = "allow-check-server-connection"
+description = "允许调用 check_server_connection 命令"
+commands.allow = ["check_server_connection"]
+
+[[permission]]
+identifier = "allow-login"
+description = "允许调用 login 命令"
+commands.allow = ["login"]
+
+[[permission]]
+identifier = "allow-register"
+description = "允许调用 register 命令"
+commands.allow = ["register"]
+
+[[permission]]
+identifier = "allow-logout"
+description = "允许调用 logout 命令"
+commands.allow = ["logout"]
+
+[[permission]]
+identifier = "allow-get-server-base-url"
+description = "允许调用 get_server_base_url 命令"
+commands.allow = ["get_server_base_url"]
+
+[[permission]]
+identifier = "allow-call-server-api"
+description = "允许调用 call_server_api 命令（在线模式转发到 Java 端）"
+commands.allow = ["call_server_api"]
+
+[[permission]]
+identifier = "allow-import-collection"
+description = "允许调用 import_collection 命令（本地解析并导入文件，在线模式额外同步到云端）"
+commands.allow = ["import_collection"]
+
+[[permission]]
+identifier = "allow-get-teams"
+description = "允许调用 get_teams 命令"
+commands.allow = ["get_teams"]
+
+[[permission]]
+identifier = "allow-create-team"
+description = "允许调用 create_team 命令"
+commands.allow = ["create_team"]
+
+[[permission]]
+identifier = "allow-update-team"
+description = "允许调用 update_team 命令"
+commands.allow = ["update_team"]
+
+[[permission]]
+identifier = "allow-delete-team"
+description = "允许调用 delete_team 命令"
+commands.allow = ["delete_team"]
+
+[[permission]]
+identifier = "allow-invite-member"
+description = "允许调用 invite_member 命令"
+commands.allow = ["invite_member"]
+
+[[permission]]
+identifier = "allow-change-member-role"
+description = "允许调用 change_member_role 命令"
+commands.allow = ["change_member_role"]
+
+[[permission]]
+identifier = "allow-remove-member"
+description = "允许调用 remove_member 命令"
+commands.allow = ["remove_member"]
+
+[[permission]]
+identifier = "allow-transfer-team"
+description = "允许调用 transfer_team 命令"
+commands.allow = ["transfer_team"]
+
+[[permission]]
+identifier = "allow-get-team-members"
+description = "允许调用 get_team_members 命令"
+commands.allow = ["get_team_members"]
+
+[[permission]]
+identifier = "allow-ws-connect"
+description = "允许调用 ws_connect 命令"
+commands.allow = ["ws_connect"]
+
+[[permission]]
+identifier = "allow-ws-send"
+description = "允许调用 ws_send 命令"
+commands.allow = ["ws_send"]
+
+[[permission]]
+identifier = "allow-ws-disconnect"
+description = "允许调用 ws_disconnect 命令"
+commands.allow = ["ws_disconnect"]
+
+[[permission]]
+identifier = "allow-start-mock-server"
+description = "允许调用 start_mock_server 命令"
+commands.allow = ["start_mock_server"]
+
+[[permission]]
+identifier = "allow-stop-mock-server"
+description = "允许调用 stop_mock_server 命令"
+commands.allow = ["stop_mock_server"]
+
+[[permission]]
+identifier = "allow-mock-server-status"
+description = "允许调用 mock_server_status 命令"
+commands.allow = ["mock_server_status"]

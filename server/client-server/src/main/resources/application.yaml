@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: boot-server
+
+  profiles:
+    active: local
+
+  # Servlet 配置
+  servlet:
+    multipart:
+      max-file-size: 16MB   # 单个文件大小
+      max-request-size: 32MB # 总上传大小
+  # 客户端请求体普遍携带 token 等附加字段，反序列化时忽略未声明字段，避免 400
+  jackson:
+    deserialization:
+      fail-on-unknown-properties: false
+    # 时间序列化基准统一为 Asia/Shanghai，与 JVM 默认时区（CanghaiApiApplication 中钉死）、
+    # BaseService.now() 的北京时间字面量、Rust `now_timestamp()`、前端 `utils.now()` 保持一致。
+    time-zone: Asia/Shanghai
+  output:
+    ansi:
+      enabled: always
+server:
+  servlet:
+    encoding:
+      enabled: true
+      charset: UTF-8 # 必须设置 UTF-8，避免中文乱码
+      force: true
+
+# 免登录白名单（Ant 风格路径）：认证/心跳 + OpenAPI 文档、Swagger UI、健康检查端点
+# 注意：接口前缀为 /api/v1（Phase 1 已统一），缺省值与此处需保持一致
+# 管理后台 /admin/** 刻意不在白名单中：必须先登录，再由 AdminService 校验管理员身份
+canghai:
+  auth:
+    whitelist:
+      - /api/v1/auth/**
+      - /api/v1/ping
+      - /v3/api-docs/**
+      - /swagger-ui/**
+      - /swagger-ui.html
+      - /actuator/health/**
+      - /actuator/info
+
+  # 管理后台（/admin/**）：与客户端 /api/** 前缀独立、授权模型独立。
+  # usernames 为管理员用户名白名单（ch_users.username，忽略大小写）；
+  # 未配置任何用户名时管理后台可用但无人有权访问（requireAdmin 一律 403）。
+  admin:
+    enabled: true
+    usernames:
+      - admin
+
+# OpenAPI / Swagger UI（springdoc-openapi 3.x，适配 Spring Boot 4）
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+    disable-swagger-default-url: true
+  # 只生成业务接口文档（客户端 /api/** + 管理后台 /admin/**），屏蔽 actuator 等运维端点
+  paths-to-match:
+    - /api/**
+    - /admin/**
+
+# 可观测性端点（仅暴露只读的 health / info）
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+# MyBatis Plus 配置项
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true # 下划线列名 ↔ 驼峰属性映射
+  global-config:
+    db-config:
+      id-type: NONE          # 智能模式，自动适配 AUTO/INPUT
+      logic-delete-value: 1  # 逻辑已删除值
+      logic-not-delete-value: 0 # 逻辑未删除值
+    banner: false            # 关闭控制台 Banner

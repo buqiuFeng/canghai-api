@@ -1,0 +1,11 @@
+# 构建上下文排除项（仅影响 docker build 发送到 daemon 的内容，不影响 git）
+.git
+**/target
+**/node_modules
+**/*.iml
+**/.idea
+**/dist
+**/release
+# 注意：刻意不包含 **/private.pem，以便本地 docker build 能把开发用 RSA 私钥带入镜像，
+# 使在线模式登录开箱即用。该私钥已在 .gitignore 中，绝不会进入仓库。
+# 生产部署请改用 CANGHAI_JWT_PRIVATE_KEY 环境变量注入自有密钥后重新构建。
