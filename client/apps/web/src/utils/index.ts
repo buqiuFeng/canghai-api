@@ -1,4 +1,4 @@
-import type { KV } from '@/types'
+import type { KV, FieldDoc } from '@/types'
 
 /** 生成唯一 ID */
 export function uid(): string {
@@ -102,6 +102,107 @@ export function shortenUrl(url: string): string {
   }
 }
 
+// ====== 接口字段描述（FieldDoc）辅助 ======
+
+/** 依据运行时值推断字段类型 */
+export function inferFieldType(value: unknown): string {
+  if (value === null) return 'null'
+  if (Array.isArray(value)) return 'array'
+  switch (typeof value) {
+    case 'string': return 'string'
+    case 'number': return Number.isInteger(value) ? 'integer' : 'number'
+    case 'boolean': return 'boolean'
+    case 'object': return 'object'
+    default: return 'any'
+  }
+}
+
+/**
+ * 把运行时 JSON 值递归拍平为字段描述表（扁平路径写法）。
+ * 对象用 `.` 连接，数组元素用 `[]` 后缀（如 `data.list[].id`）。
+ */
+export function flattenJsonToFieldDocs(value: unknown, prefix = '', out: FieldDoc[] = []): FieldDoc[] {
+  if (Array.isArray(value)) {
+    // 顶层数组：取第一个非空元素继续下钻，路径不加 []（与常见接口返回一致）
+    const sample = value.find(x => x !== null && x !== undefined)
+    if (sample && typeof sample === 'object') flattenJsonToFieldDocs(sample, prefix, out)
+    return out
+  }
+  if (value && typeof value === 'object') {
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      const path = prefix ? `${prefix}.${k}` : k
+      out.push({ key: path, fieldType: inferFieldType(v), required: false, description: '' })
+      if (Array.isArray(v)) {
+        const sample = v.find(x => x !== null && x !== undefined)
+        if (sample && typeof sample === 'object') flattenJsonToFieldDocs(sample, `${path}[]`, out)
+      } else if (v && typeof v === 'object') {
+        flattenJsonToFieldDocs(v, path, out)
+      }
+    }
+  }
+  return out
+}
+
+/**
+ * 将「新生成的字段行」与「已有字段行」按 `key` 合并：
+ * - 命中已有行时保留用户已填的 `required` / `description`；
+ * - 已有行中本次未出现的字段保留在末尾，避免描述丢失。
+ */
+export function mergeFieldDocs(generated: FieldDoc[], existing: FieldDoc[]): FieldDoc[] {
+  const prev = new Map(existing.filter(e => e.key.trim()).map(e => [e.key.trim(), e]))
+  const seen = new Set<string>()
+  const out: FieldDoc[] = generated.map(g => {
+    seen.add(g.key)
+    const p = prev.get(g.key)
+    if (!p) return g
+    return {
+      key: g.key,
+      // 响应里推断为 any/null 时，回退到用户手选的类型
+      fieldType: (g.fieldType === 'any' || g.fieldType === 'null') && p.fieldType ? p.fieldType : g.fieldType,
+      required: p.required,
+      description: p.description || g.description,
+    }
+  })
+  for (const e of existing) {
+    if (e.key.trim() && !seen.has(e.key.trim())) out.push({ ...e })
+  }
+  return out
+}
+
+/**
+ * 从 OpenAPI / JSON Schema 递归提取字段描述表（扁平路径写法）。
+ * 复用 `properties` / `items` / `required` / `description`。
+ */
+export function schemaToFieldDocs(schema: any, prefix = '', requiredKeys: string[] = []): FieldDoc[] {
+  const out: FieldDoc[] = []
+  if (!schema || typeof schema !== 'object') return out
+  if (schema.type === 'object' && schema.properties && typeof schema.properties === 'object') {
+    for (const [k, v] of Object.entries<any>(schema.properties)) {
+      const path = prefix ? `${prefix}.${k}` : k
+      out.push({
+        key: path,
+        fieldType: v?.type ?? 'any',
+        required: requiredKeys.includes(k),
+        description: v?.description ?? v?.title ?? '',
+      })
+      if (v?.type === 'object' && v.properties) {
+        out.push(...schemaToFieldDocs(v, path, v.required ?? []))
+      } else if (v?.type === 'array' && v.items) {
+        const itemPath = `${path}[]`
+        out.push({
+          key: itemPath,
+          fieldType: v.items.type ?? 'any',
+          required: false,
+          description: v.items.description ?? '',
+        })
+        if (v.items.type === 'object' && v.items.properties) {
+          out.push(...schemaToFieldDocs(v.items, itemPath, v.items.required ?? []))
+        }
+      }
+    }
+  }
+  return out
+}
 /** 剥离 JSON 中的 // 和 /* 注释，保留字符串内的内容 */
 export function stripJsonComments(input: string): string {
   let result = ''

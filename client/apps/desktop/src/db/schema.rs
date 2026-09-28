@@ -42,6 +42,7 @@ pub fn init(db_path: &Path) -> Result<DbConn, DbError> {
             body_type TEXT NOT NULL DEFAULT 'none',
             body TEXT NOT NULL DEFAULT '',
             form_body TEXT NOT NULL DEFAULT '[]',
+            form_data TEXT NOT NULL DEFAULT '[]',
             pre_script TEXT NOT NULL DEFAULT '',
             post_script TEXT NOT NULL DEFAULT '',
             category_id TEXT,
@@ -83,6 +84,9 @@ pub fn init(db_path: &Path) -> Result<DbConn, DbError> {
             body_type TEXT NOT NULL DEFAULT 'none',
             body TEXT NOT NULL DEFAULT '',
             form_body TEXT NOT NULL DEFAULT '[]',
+            form_data TEXT NOT NULL DEFAULT '[]',
+            request_fields TEXT NOT NULL DEFAULT '[]',
+            response_fields TEXT NOT NULL DEFAULT '[]',
             category_id TEXT,
             project_id TEXT,
             pre_script TEXT NOT NULL DEFAULT '',
@@ -222,10 +226,17 @@ pub fn init(db_path: &Path) -> Result<DbConn, DbError> {
     migrate_add_column(&conn, "ch_saved_requests", "post_script", "TEXT NOT NULL DEFAULT ''")?;
     migrate_add_column(&conn, "ch_saved_requests", "create_by", "TEXT NOT NULL DEFAULT ''")?;
     migrate_add_column(&conn, "ch_saved_requests", "update_by", "TEXT NOT NULL DEFAULT ''")?;
+    // form-data 多部件表单（支持文件上传）：存量库升级补齐列
+    migrate_add_column(&conn, "ch_saved_requests", "form_data", "TEXT NOT NULL DEFAULT '[]'")?;
+    // 请求/响应字段描述表（apipost 文档风格）：存量库升级补齐列
+    migrate_add_column(&conn, "ch_saved_requests", "request_fields", "TEXT NOT NULL DEFAULT '[]'")?;
+    migrate_add_column(&conn, "ch_saved_requests", "response_fields", "TEXT NOT NULL DEFAULT '[]'")?;
     // 历史条目补齐脚本列与项目列（修复「脚本落库即丢」「历史无法按项目隔离」）
     migrate_add_column(&conn, "ch_history", "pre_script", "TEXT NOT NULL DEFAULT ''")?;
     migrate_add_column(&conn, "ch_history", "post_script", "TEXT NOT NULL DEFAULT ''")?;
     migrate_add_column(&conn, "ch_history", "project_id", "TEXT")?;
+    // form-data 多部件表单（支持文件上传）：存量库升级补齐列
+    migrate_add_column(&conn, "ch_history", "form_data", "TEXT NOT NULL DEFAULT '[]'")?;
 
     // 项目成员名称快照（服务端 ch_project_members.member_name 下发）：
     // 本地无用户表，名称只能靠落库快照，否则离线成员列表会退回显示 member_id（UUID）。

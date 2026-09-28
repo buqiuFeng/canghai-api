@@ -9,8 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/autocomplete": "^6.20.3",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/language": "^6.12.4",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.13",
     "@element-plus/icons-vue": "^2.3.1",
+    "@lezer/highlight": "^1.2.4",
     "@tauri-apps/api": "^2",
+    "codemirror": "^6.0.2",
     "crypto-js": "^4.2.0",
     "dompurify": "^3.4.14",
     "element-plus": "^2.9.7",

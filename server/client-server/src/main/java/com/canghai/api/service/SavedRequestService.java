@@ -67,6 +67,8 @@ public class SavedRequestService extends BaseService {
         r.setBodyType(req.getBodyType() != null ? req.getBodyType() : "none");
         r.setBody(req.getBody() != null ? req.getBody() : "");
         r.setFormBody(req.getFormBody());
+        r.setRequestFields(req.getRequestFields());
+        r.setResponseFields(req.getResponseFields());
         r.setCategoryId(req.getCategoryId());
         r.setPreScript(req.getPreScript() != null ? req.getPreScript() : "");
         r.setPostScript(req.getPostScript() != null ? req.getPostScript() : "");
@@ -106,6 +108,8 @@ public class SavedRequestService extends BaseService {
                 .set("body_type", req.getBodyType())
                 .set("body", req.getBody())
                 .set("form_body", jsonOrNull(req.getFormBody()))
+                .set("request_fields", jsonOrNull(req.getRequestFields()))
+                .set("response_fields", jsonOrNull(req.getResponseFields()))
                 .set("category_id", req.getCategoryId())
                 .set("pre_script", req.getPreScript())
                 .set("post_script", req.getPostScript())

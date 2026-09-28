@@ -1,6 +1,35 @@
 // ====== HTTP 方法 & Body 类型 ======
 export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD' | 'OPTIONS'
-export type BodyType = 'none' | 'json' | 'form' | 'text'
+export type BodyType = 'none' | 'json' | 'form' | 'text' | 'formdata'
+
+// ====== form-data 表单字段（支持文本与文件）======
+export interface FormDataPart {
+  enabled: boolean
+  /** 字段名 */
+  key: string
+  /** 字段类型：text 普通文本，file 文件上传 */
+  type: 'text' | 'file'
+  /** 文本值（type === 'text' 时有效） */
+  value?: string
+  /** 文件名（type === 'file' 时展示用，如 'a.png'） */
+  fileName?: string
+  /** 文件内容（base64，不含 data: 前缀；type === 'file' 时有效） */
+  fileData?: string
+  /** 文件 MIME（type === 'file' 时有效，如 'image/png'） */
+  fileMime?: string
+  /** 文件字节大小（type === 'file' 时有效，用于展示） */
+  fileSize?: number
+  /** 字段描述（仅用于说明用途，不参与实际请求与上传） */
+  description?: string
+}
+
+export const emptyFormDataPart = (): FormDataPart => ({
+  enabled: true,
+  key: '',
+  type: 'text',
+  value: '',
+  description: '',
+})
 
 export const METHODS: Method[] = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS']
 
@@ -23,9 +52,40 @@ export interface KV {
   key: string
   value: string
   enabled: boolean
+  /** 字段描述（仅用于说明用途，不参与实际请求） */
+  description?: string
 }
 
-export const emptyKV = (): KV => ({ key: '', value: '', enabled: true })
+export const emptyKV = (): KV => ({ key: '', value: '', enabled: true, description: '' })
+
+// ====== 接口字段描述（参考 apipost 文档风格）======
+// 用于「请求字段表 / 响应字段表」：字段名 / 类型 / 必填 / 描述。
+// 字段名为扁平路径写法（如 `data.list[].id`），不建树形结构。
+export interface FieldDoc {
+  /** 字段名（或路径） */
+  key: string
+  /** 字段类型：string/number/integer/boolean/object/array/file/null/any */
+  fieldType: string
+  /** 是否必填 */
+  required: boolean
+  /** 字段描述 */
+  description: string
+}
+
+export const emptyFieldDoc = (): FieldDoc => ({ key: '', fieldType: 'string', required: false, description: '' })
+
+/** 字段类型候选项（类型下拉用） */
+export const FIELD_TYPE_OPTIONS = [
+  'string',
+  'number',
+  'integer',
+  'boolean',
+  'object',
+  'array',
+  'file',
+  'null',
+  'any',
+] as const
 
 // ====== 后端发送 HTTP 请求的原始响应字段（位于统一响应的 data 内）======
 export interface BackendResp {
@@ -59,6 +119,7 @@ export interface HistoryItem {
   bodyType: BodyType
   body: string
   formBody: KV[]
+  formData: FormDataPart[]
   preScript: string
   postScript: string
   createTime: string
@@ -115,6 +176,11 @@ export interface TabFormState {
   bodyType: BodyType
   body: string
   formBody: KV[]
+  formData: FormDataPart[]
+  /** 请求字段描述表（apipost 文档风格） */
+  requestFields: FieldDoc[]
+  /** 响应字段描述表（apipost 文档风格） */
+  responseFields: FieldDoc[]
   categoryId: string | undefined
   preScript: string
   postScript: string
@@ -126,7 +192,7 @@ export interface TabState {
   title: string
   form: TabFormState
   reqTab: 'params' | 'headers' | 'body' | 'preScript' | 'postScript'
-  respTab: 'body' | 'headers' | 'requestHeaders' | 'requestDetail' | 'scriptLog'
+  respTab: 'body' | 'headers' | 'requestHeaders' | 'responseFields' | 'requestDetail' | 'scriptLog'
   respView: 'pretty' | 'raw'
   response: ResponseInfo | null
   requestHeaders: { key: string; value: string }[]
@@ -196,6 +262,11 @@ export interface SavedRequest {
   bodyType: BodyType
   body: string
   formBody: KV[]
+  formData: FormDataPart[]
+  /** 请求字段描述表 */
+  requestFields: FieldDoc[]
+  /** 响应字段描述表 */
+  responseFields: FieldDoc[]
   preScript: string
   postScript: string
   sortOrder?: number

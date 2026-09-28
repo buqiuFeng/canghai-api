@@ -17,6 +17,8 @@ public class KV {
     private String key;
     private String value;
     private Boolean enabled;
+    /** 字段描述（仅用于说明用途，不参与实际请求）。缺失该字段会导致在线模式保存/同步时描述被丢弃。 */
+    private String description;
 
     public boolean isEnabled() {
         return enabled == null || enabled;

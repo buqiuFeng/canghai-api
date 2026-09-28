@@ -20,6 +20,7 @@ public interface SavedRequestMapper extends BaseMapper<SavedRequest> {
      */
     @Insert("<script>" +
             "INSERT INTO ch_saved_requests (id, project_id, name, method, url, params, headers, body_type, body, form_body, " +
+            "request_fields, response_fields, " +
             "category_id, pre_script, post_script, sort_order, create_time, create_by, update_time, update_by, deleted) VALUES " +
             "<foreach collection='list' item='e' separator=','>" +
             "(#{e.id}, #{e.projectId}, #{e.name}, #{e.method}, #{e.url}, " +
@@ -27,12 +28,15 @@ public interface SavedRequestMapper extends BaseMapper<SavedRequest> {
             "#{e.headers,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}, " +
             "#{e.bodyType}, #{e.body}, " +
             "#{e.formBody,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}, " +
+            "#{e.requestFields,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}, " +
+            "#{e.responseFields,typeHandler=com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler}, " +
             "#{e.categoryId}, #{e.preScript}, #{e.postScript}, #{e.sortOrder}, #{e.createTime}, #{e.createBy}, " +
             "#{e.updateTime}, #{e.updateBy}, #{e.deleted})" +
             "</foreach> " +
             "ON DUPLICATE KEY UPDATE project_id=VALUES(project_id), name=VALUES(name), method=VALUES(method), url=VALUES(url), " +
             "params=VALUES(params), headers=VALUES(headers), body_type=VALUES(body_type), body=VALUES(body), " +
-            "form_body=VALUES(form_body), category_id=VALUES(category_id), pre_script=VALUES(pre_script), " +
+            "form_body=VALUES(form_body), request_fields=VALUES(request_fields), response_fields=VALUES(response_fields), " +
+            "category_id=VALUES(category_id), pre_script=VALUES(pre_script), " +
             "post_script=VALUES(post_script), sort_order=VALUES(sort_order), update_time=VALUES(update_time), " +
             "update_by=VALUES(update_by), deleted=VALUES(deleted)" +
             "</script>")

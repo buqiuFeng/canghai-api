@@ -1,5 +1,5 @@
 use crate::infra;
-use crate::models::{HttpRequest, HttpResponse};
+use crate::models::{FormPart, HttpRequest, HttpResponse};
 use crate::sync::ApiResult;
 use crate::sync::codes;
 use futures_util::StreamExt;
@@ -8,6 +8,34 @@ use std::net::{IpAddr, Ipv4Addr};
 use std::str::FromStr;
 use std::time::Instant;
 use tauri::{Emitter, Window};
+
+// base64 0.22：`decode` 是 `Engine` trait 的方法，需显式引入该 trait 才能调用
+use base64::Engine;
+
+/// 由前端传入的多部件表单，命中时优先于 `body` 发送（Content-Type 由 reqwest 自动带 boundary）。
+fn build_multipart(parts: &[FormPart]) -> Result<reqwest::multipart::Form, String> {
+    let mut form = reqwest::multipart::Form::new();
+    for part in parts {
+        if let Some(filename) = &part.filename {
+            let bytes = match &part.data {
+                Some(b64) => base64::engine::general_purpose::STANDARD
+                    .decode(b64)
+                    .map_err(|e| format!("文件字段 `{}` 的 base64 解码失败: {}", part.name, e))?,
+                None => Vec::new(),
+            };
+            let mut pb = reqwest::multipart::Part::bytes(bytes).file_name(filename.clone());
+            if let Some(ct) = &part.content_type {
+                pb = pb
+                    .mime_str(ct)
+                    .map_err(|e| format!("文件字段 `{}` 的 Content-Type 非法: {}", part.name, e))?;
+            }
+            form = form.part(part.name.clone(), pb);
+        } else {
+            form = form.text(part.name.clone(), part.value.clone().unwrap_or_default());
+        }
+    }
+    Ok(form)
+}
 
 /// 允许访问的 URL 协议白名单（防止 file:// / gopher:// 等非常规协议引发的 SSRF/本地文件泄露）。
 const ALLOWED_URL_SCHEMES: [&str; 2] = ["http", "https"];
@@ -107,7 +135,7 @@ pub async fn send_http_request(req: HttpRequest) -> ApiResult<HttpResponse> {
     }
 }
 
-async fn inner_send_http_request(req: HttpRequest) -> Result<HttpResponse, String> {
+async fn inner_send_http_request(mut req: HttpRequest) -> Result<HttpResponse, String> {
     assert_safe_target_url(&req.url, req.allow_private)?;
 
     let method = reqwest::Method::from_bytes(req.method.to_uppercase().as_bytes())
@@ -122,7 +150,14 @@ async fn inner_send_http_request(req: HttpRequest) -> Result<HttpResponse, Strin
     for (k, v) in &req.headers {
         builder = builder.header(k.as_str(), v.as_str());
     }
-    if let Some(body) = req.body {
+    if let Some(parts) = &req.multipart {
+        if !parts.is_empty() {
+            let form = build_multipart(parts)?;
+            builder = builder.multipart(form);
+        } else if let Some(body) = req.body.take() {
+            builder = builder.body(body);
+        }
+    } else if let Some(body) = req.body.take() {
         builder = builder.body(body);
     }
     let start = Instant::now();
@@ -187,7 +222,7 @@ pub async fn send_http_request_stream(
 }
 
 async fn inner_send_http_request_stream(
-    req: HttpRequest,
+    mut req: HttpRequest,
     window: Window,
 ) -> Result<HttpResponse, String> {
     assert_safe_target_url(&req.url, req.allow_private)?;
@@ -216,7 +251,14 @@ async fn inner_send_http_request_stream(
     for (k, v) in &req.headers {
         builder = builder.header(k.as_str(), v.as_str());
     }
-    if let Some(body) = req.body {
+    if let Some(parts) = &req.multipart {
+        if !parts.is_empty() {
+            let form = build_multipart(parts)?;
+            builder = builder.multipart(form);
+        } else if let Some(body) = req.body.take() {
+            builder = builder.body(body);
+        }
+    } else if let Some(body) = req.body.take() {
         builder = builder.body(body);
     }
 

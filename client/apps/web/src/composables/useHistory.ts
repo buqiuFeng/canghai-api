@@ -1,5 +1,5 @@
 import { ref, computed, watch } from 'vue'
-import type { HistoryItem, Method, KV, BodyType } from '@/types'
+import type { HistoryItem, Method, KV, BodyType, FormDataPart } from '@/types'
 import { useDataMode } from './useDataMode'
 import { now } from '@/utils'
 import { useHistoryRepo } from '@/repositories/historyRepo'
@@ -41,6 +41,7 @@ export function useHistory(selectedCategoryId: { value: string | null }) {
       bodyType: BodyType
       body: string
       formBody: KV[]
+      formData: FormDataPart[]
       preScript: string
       postScript: string
       categoryId: string | undefined
@@ -56,6 +57,7 @@ export function useHistory(selectedCategoryId: { value: string | null }) {
       bodyType: form.bodyType,
       body: form.body,
       formBody: JSON.parse(JSON.stringify(form.formBody)),
+      formData: JSON.parse(JSON.stringify(form.formData)),
       preScript: form.preScript,
       postScript: form.postScript,
       createTime: now(),

@@ -665,11 +665,18 @@
 }
 
 /* ====== Request Tabs ====== */
+/* 请求区固定在分割条上方的一行内（见 .debug-panel 的 grid-template-rows），
+   高度由脚本给出；高度不够时只滚动页签内容，页签头保持可见。 */
 .req-tabs {
   margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 .req-tabs :deep(.el-tabs__header) {
   margin-bottom: 0;
+  flex: 0 0 auto;
 }
 .req-tabs :deep(.el-tabs__nav-wrap::after) {
   height: 1px;
@@ -687,7 +694,11 @@
   font-weight: 600;
 }
 .req-tabs :deep(.el-tabs__content) {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
   padding-top: 10px;
+  padding-right: 2px;
 }
 .body-bar {
   display: flex;
@@ -746,11 +757,52 @@
   white-space: nowrap;
 }
 
+/* ====== 请求区 / 响应区分割条 ====== */
+.pane-resizer {
+  position: relative;
+  height: 18px;
+  margin: 2px 0 6px;
+  display: flex;
+  align-items: center;
+  cursor: row-resize;
+  user-select: none;
+  touch-action: none;
+}
+.pane-resizer-bar {
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--divider);
+  transition: background var(--duration-fast) var(--ease-out),
+    height var(--duration-fast) var(--ease-out);
+}
+.pane-resizer-grip {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+.pane-resizer:hover .pane-resizer-bar,
+.pane-resizer.dragging .pane-resizer-bar {
+  background: var(--brand-1);
+  height: 3px;
+}
+.pane-resizer:hover .pane-resizer-grip,
+.pane-resizer.dragging .pane-resizer-grip {
+  background: var(--brand-1);
+}
+
 /* ====== Response Area ====== */
+/* 分割条已承担分隔视觉，这里不再重复 border-top */
 .response-area {
-  margin-top: 10px;
-  padding-top: 14px;
-  border-top: 2px solid var(--divider);
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 2px;
 }
 .response-header {
   display: flex;
@@ -928,24 +980,6 @@
   color: var(--text-4);
   letter-spacing: 0.01em;
 }
-.script-textarea :deep(textarea) {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: var(--fs-sm);
-  line-height: 1.7;
-  background: var(--code-bg);
-  color: #cbd5e1;
-  border-radius: 10px;
-  padding: 14px 16px;
-  border: 1px solid rgba(99,102,241,.12);
-  transition: border-color var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
-}
-.script-textarea :deep(textarea:focus) {
-  border-color: rgba(99,102,241,.3);
-  box-shadow: 0 0 0 3px rgba(99,102,241,.06);
-}
-.script-textarea :deep(textarea::placeholder) {
-  color: var(--text-2);
-}
 
 /* ====== Tab has-content dot ====== */
 .tab-label-with-dot {
@@ -1003,11 +1037,14 @@
 .log-success .log-prefix { color: #10b981; }
 
 /* ====== Mode Switcher ====== */
+/* 调试面板：URL 行 / 分类行 / 请求参数 Tabs / 分割条 / 响应区
+   五行依次排布，只有请求区与响应区可滚动，其余各行高度不被压缩。
+   请求区行高由脚本按面板高度算成像素值（--req-pane-h），
+   不用百分比：面板高度来自父级 flex:1，百分比行高在该场景下不可靠。 */
 .debug-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow-y: auto;
+  display: grid;
+  grid-template-rows: auto auto var(--req-pane-h, 300px) auto minmax(0, 1fr);
+  overflow: hidden;
   flex: 1;
   min-height: 0;
   height: 0;
@@ -1185,6 +1222,12 @@
   min-height: 0;
   height: 0;
 }
+/* 子项禁止收缩：否则内容超出面板高度时各卡片被压缩，
+   而卡片自身 overflow:hidden 会把字段表等长内容从中间裁掉
+   （表现为「字段显示不全」）。改为不收缩后由面板整体滚动。 */
+.design-panel > * {
+  flex-shrink: 0;
+}
 .design-intro {
   display: flex;
   align-items: flex-start;
@@ -1345,6 +1388,15 @@
   border: none;
   border-radius: 0;
   box-shadow: none;
+}
+
+/* ====== 字段描述弹窗（从 Body JSON 提取）====== */
+.field-doc-dialog-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 /* ====== Markdown Body Styles ====== */

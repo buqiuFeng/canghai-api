@@ -220,7 +220,7 @@
         </div>
 
         <!-- ====== 调试模式 ====== -->
-        <div v-if="workMode === 'debug'" class="debug-panel">
+        <div v-if="workMode === 'debug'" ref="debugPanelRef" class="debug-panel" :style="reqPaneStyle">
 
         <!-- URL 行 -->
         <div class="url-row">
@@ -330,13 +330,13 @@
             <template #label>
               <span class="tab-label-with-dot">Params<span v-if="hasParams" class="tab-dot" /></span>
             </template>
-            <KeyValueEditor v-model="form.params" placeholder-key="参数名" placeholder-value="参数值" />
+            <KeyValueEditor v-model="form.params" placeholder-key="参数名" placeholder-value="参数值" add-text="添加参数" />
           </el-tab-pane>
           <el-tab-pane name="headers">
             <template #label>
               <span class="tab-label-with-dot">Headers<span v-if="hasHeaders" class="tab-dot" /></span>
             </template>
-            <KeyValueEditor v-model="form.headers" placeholder-key="Header 名" placeholder-value="Header 值" />
+            <KeyValueEditor v-model="form.headers" placeholder-key="Header 名" placeholder-value="Header 值" add-text="添加 Header" />
           </el-tab-pane>
           <el-tab-pane name="body" :disabled="!methodAllowsBody">
             <template #label>
@@ -347,6 +347,7 @@
                 <el-radio-button value="none">none</el-radio-button>
                 <el-radio-button value="json">JSON</el-radio-button>
                 <el-radio-button value="form">form-urlencoded</el-radio-button>
+                <el-radio-button value="formdata">form-data</el-radio-button>
                 <el-radio-button value="text">text</el-radio-button>
               </el-radio-group>
               <el-button
@@ -356,6 +357,13 @@
                 type="primary"
                 @click="formatJsonBody"
               >格式化 JSON</el-button>
+              <el-button
+                v-if="form.bodyType === 'json'"
+                size="small"
+                link
+                type="primary"
+                @click="openFieldDocDialog"
+              >提取字段描述</el-button>
               <el-popover :width="240" trigger="click" v-model:visible="bodyVarVisible">
                 <template #reference>
                   <el-button :icon="Coin" size="small" class="btn-var" title="插入环境变量（先聚焦请求体再点此）" @mousedown.prevent="captureFocusedInput" />
@@ -382,12 +390,22 @@
               placeholder-key="字段名"
               placeholder-value="字段值"
             />
+            <FormDataEditor
+              v-else-if="form.bodyType === 'formdata'"
+              v-model="form.formData"
+            />
+            <!-- JSON 请求体：语法高亮（注释与 {{变量}} 占位符同样着色） -->
+            <JsonEditor
+              v-else-if="form.bodyType === 'json'"
+              v-model="form.body"
+              :placeholder="'{\n  // 支持注释\n  &quot;key&quot;: &quot;value&quot;\n}'"
+            />
             <el-input
               v-else-if="form.bodyType !== 'none'"
               v-model="form.body"
               type="textarea"
               :rows="10"
-              :placeholder="form.bodyType === 'json' ? '{\n  // 支持注释\n  &quot;key&quot;: &quot;value&quot;\n}' : '请求体文本'"
+              placeholder="请求体文本"
               class="body-textarea"
             />
             <EmptyState v-else compact title="无请求体" description="该方法或当前 Body 类型无请求体" />
@@ -410,7 +428,7 @@
               >清空</el-button>
               <el-popover :width="240" trigger="click" v-model:visible="preVarVisible">
                 <template #reference>
-                  <el-button :icon="Coin" size="small" class="btn-var" title="插入环境变量（先聚焦脚本再点此）" @mousedown.prevent="captureFocusedInput" />
+                  <el-button :icon="Coin" size="small" class="btn-var" title="插入环境变量到脚本光标处" @mousedown.prevent />
                 </template>
                 <div class="var-pop">
                   <div v-if="!activeVariables.length" class="var-pop-empty">当前环境暂无变量</div>
@@ -420,7 +438,7 @@
                     :key="v.key"
                     class="var-pop-item"
                     :class="{ off: !v.enabled }"
-                    @click="insertVar(v.key); preVarVisible = false"
+                    @click="insertVar(v.key, 'pre'); preVarVisible = false"
                   >
                     <span class="vp-k">&#123;&#123;{{ v.key }}&#125;&#125;</span>
                     <span class="vp-v">{{ v.enabled ? (v.value || '（空）') : '（已禁用）' }}</span>
@@ -428,12 +446,12 @@
                 </div>
               </el-popover>
             </div>
-            <el-input
+            <ScriptEditor
+              ref="preEditorRef"
+              name="pre"
+              api-ref
               v-model="form.preScript"
-              type="textarea"
-              :rows="10"
               placeholder="// 前置脚本（Pre-request）· 使用 Postman(pm) 语法&#10;// 示例: pm.request.headers.add({ key:'Authorization', value:'Bearer '+pm.environment.get('token') })&#10;// pm.variables.set('ts', String(Date.now())); pm.request.url = pm.request.url + '?ts={{ts}}'"
-              class="script-textarea"
             />
           </el-tab-pane>
           <el-tab-pane name="postScript">
@@ -454,7 +472,7 @@
               >清空</el-button>
               <el-popover :width="240" trigger="click" v-model:visible="postVarVisible">
                 <template #reference>
-                  <el-button :icon="Coin" size="small" class="btn-var" title="插入环境变量（先聚焦脚本再点此）" @mousedown.prevent="captureFocusedInput" />
+                  <el-button :icon="Coin" size="small" class="btn-var" title="插入环境变量到脚本光标处" @mousedown.prevent />
                 </template>
                 <div class="var-pop">
                   <div v-if="!activeVariables.length" class="var-pop-empty">当前环境暂无变量</div>
@@ -464,7 +482,7 @@
                     :key="v.key"
                     class="var-pop-item"
                     :class="{ off: !v.enabled }"
-                    @click="insertVar(v.key); postVarVisible = false"
+                    @click="insertVar(v.key, 'post'); postVarVisible = false"
                   >
                     <span class="vp-k">&#123;&#123;{{ v.key }}&#125;&#125;</span>
                     <span class="vp-v">{{ v.enabled ? (v.value || '（空）') : '（已禁用）' }}</span>
@@ -472,15 +490,26 @@
                 </div>
               </el-popover>
             </div>
-            <el-input
+            <ScriptEditor
+              ref="postEditorRef"
+              name="post"
+              api-ref
               v-model="form.postScript"
-              type="textarea"
-              :rows="10"
               placeholder="// 后置脚本（Post-response）· 使用 Postman(pm) 语法&#10;// 示例: pm.environment.set('token', pm.response.json().token)&#10;// pm.test('状态码 200', () => pm.expect(pm.response.code).to.equal(200))"
-              class="script-textarea"
             />
           </el-tab-pane>
         </el-tabs>
+
+        <!-- 请求区 / 响应区分割条：上下拖动调整请求区高度 -->
+        <div
+          class="pane-resizer"
+          :class="{ dragging: paneDragging }"
+          title="上下拖动可调整请求区高度"
+          @mousedown="startPaneDrag"
+        >
+          <span class="pane-resizer-bar" />
+          <span class="pane-resizer-grip" />
+        </div>
 
         <!-- 响应区 -->
         <div class="response-area">
@@ -539,6 +568,16 @@
                 <el-table-column prop="value" label="值" show-overflow-tooltip />
               </el-table>
             </el-tab-pane>
+            <el-tab-pane name="responseFields">
+              <template #label>
+                <span class="tab-label-with-dot">响应字段<span v-if="form.responseFields.length" class="tab-dot" /></span>
+              </template>
+              <div class="script-bar">
+                <span class="script-hint">描述响应字段含义（字段名支持 data.list[].id 路径写法）</span>
+                <el-button size="small" link type="primary" @click="generateResponseFields">从响应 JSON 生成</el-button>
+              </div>
+              <FieldDocEditor v-model="form.responseFields" add-text="添加字段" />
+            </el-tab-pane>
             <!-- 请求详情 -->
             <el-tab-pane label="请求详情" name="requestDetail">
               <div class="req-detail-panel">
@@ -595,6 +634,17 @@
                       <span class="req-detail-kv-key">{{ resolvedHeaderValue(f.key) }}</span>
                       <span class="req-detail-kv-eq">=</span>
                       <span class="req-detail-kv-val">{{ resolvedHeaderValue(f.value) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- form-data 字段 -->
+                <div v-if="form.bodyType === 'formdata' && enabledFormData.length" class="req-detail-section">
+                  <div class="req-detail-subtitle">表单字段 ({{ enabledFormData.length }})</div>
+                  <div class="req-detail-kv-list">
+                    <div v-for="f in enabledFormData" :key="f.key" class="req-detail-kv-item">
+                      <span class="req-detail-kv-key">{{ resolvedHeaderValue(f.key) }}</span>
+                      <span class="req-detail-kv-eq">=</span>
+                      <span class="req-detail-kv-val">{{ f.type === 'file' ? '[' + (f.fileName || '文件') + ']' : resolvedHeaderValue(f.value || '') }}</span>
                     </div>
                   </div>
                 </div>
@@ -663,11 +713,16 @@
                 <span class="preview-label">请求体</span>
                 <span class="preview-kv-count">{{ form.bodyType }} · {{ formatSize(bodyByteSize) }}</span>
               </div>
-              <!-- form-urlencoded 参数 -->
-              <div v-if="form.bodyType === 'form' && enabledFormBody.length" class="preview-summary-row">
-                <span class="preview-label">表单</span>
-                <span class="preview-kv-count">{{ enabledFormBody.length }} 个字段</span>
-              </div>
+            <!-- form-urlencoded 参数 -->
+            <div v-if="form.bodyType === 'form' && enabledFormBody.length" class="preview-summary-row">
+              <span class="preview-label">表单</span>
+              <span class="preview-kv-count">{{ enabledFormBody.length }} 个字段</span>
+            </div>
+            <!-- form-data 参数 -->
+            <div v-if="form.bodyType === 'formdata' && enabledFormData.length" class="preview-summary-row">
+              <span class="preview-label">表单</span>
+              <span class="preview-kv-count">{{ enabledFormData.length }} 个字段</span>
+            </div>
             </div>
           </div>
 
@@ -734,6 +789,21 @@
                 <span class="preview-param-key">{{ resolvedHeaderValue(f.key) }}</span>
                 <span class="preview-param-eq">=</span>
                 <span class="preview-param-val">{{ resolvedHeaderValue(f.value) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- form-data 字段详情 -->
+          <div v-if="form.bodyType === 'formdata' && enabledFormData.length" class="preview-section">
+            <div class="preview-section-header">
+              <el-icon><Folder /></el-icon>
+              <span>表单字段</span>
+            </div>
+            <div class="preview-params-list">
+              <div v-for="f in enabledFormData" :key="f.key" class="preview-param-item">
+                <span class="preview-param-key">{{ resolvedHeaderValue(f.key) }}</span>
+                <span class="preview-param-eq">=</span>
+                <span class="preview-param-val">{{ f.type === 'file' ? '[' + (f.fileName || '文件') + ']' : resolvedHeaderValue(f.value || '') }}</span>
               </div>
             </div>
           </div>
@@ -971,6 +1041,27 @@
       <MockManager />
     </el-drawer>
 
+    <!-- 字段描述弹窗（从 Body JSON 提取） -->
+    <el-dialog
+      v-model="fieldDocDialogVisible"
+      title="字段描述"
+      width="780px"
+      append-to-body
+      class="field-doc-dialog"
+    >
+      <div class="field-doc-dialog-bar">
+        <span class="script-hint">按 JSON 路径列出字段，可逐行补充「描述」；确定后随接口一起保存</span>
+        <el-button size="small" link type="primary" @click="extractJsonBodyFields">从当前 JSON 重新提取</el-button>
+      </div>
+      <el-scrollbar max-height="480px">
+        <FieldDocEditor v-model="dialogFields" add-text="添加字段" />
+      </el-scrollbar>
+      <template #footer>
+        <el-button @click="fieldDocDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmFieldDocs">确定</el-button>
+      </template>
+    </el-dialog>
+
     <!-- 历史滑出面板 -->
     <aside class="history-slide-panel" :class="{ 'history-slide--open': showHistory }">
       <div class="history-panel-inner">
@@ -1066,13 +1157,17 @@
 
 <script setup lang="ts">
 import EmptyState from '@/components/EmptyState.vue'
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import JsonEditor from '@/components/JsonEditor.vue'
+import FormDataEditor from '@/components/FormDataEditor.vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Promotion, Position, Star, Setting, EditPen, InfoFilled, Document, Folder, Clock, View, SetUp, Monitor, Cloudy, Connection, Switch, FolderOpened, Plus, Coin } from '@element-plus/icons-vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import KeyValueEditor from '@/components/KeyValueEditor.vue'
+import FieldDocEditor from '@/components/FieldDocEditor.vue'
+import ScriptEditor from '@/components/ScriptEditor.vue'
 import CategoryTree from '@/components/CategoryTree.vue'
 import WebSocketTester from '@/components/WebSocketTester.vue'
 import VersionHistoryDrawer from '@/components/VersionHistoryDrawer.vue'
@@ -1085,11 +1180,12 @@ import type { Category } from '@/composables/useCategories'
 import { useSavedRequests } from '@/composables/useSavedRequests'
 import { useEnvironments } from '@/composables/useEnvironments'
 import type { SavedRequest } from '@/composables/useSavedRequests'
-import type { Method, BodyType, KV, ResponseInfo, HistoryItem, WorkMode, MockResponse } from '@/types'
-import { METHODS, emptyKV, MOCK_STATUS_OPTIONS } from '@/types'
+import type { Method, BodyType, KV, ResponseInfo, HistoryItem, WorkMode, MockResponse, FormDataPart, FieldDoc } from '@/types'
+import { METHODS, emptyKV, emptyFormDataPart, MOCK_STATUS_OPTIONS } from '@/types'
 import {
   looksLikeJson, statusTagTypeOf, methodTagType,
   formatSize, formatTime, parseServerTime, kvToObject, shortenUrl, stripJsonComments, uid,
+  flattenJsonToFieldDocs, mergeFieldDocs,
 } from '@/utils'
 import { useTabs, createDefaultTabState } from '@/composables/useTabs'
 import { useScriptEngine, PRE_SCRIPT_TEMPLATE, POST_SCRIPT_TEMPLATE } from '@/composables/useScriptEngine'
@@ -1268,7 +1364,8 @@ function captureFocusedInput() {
 }
 
 // 将文本插入到聚焦输入框的光标位置，并同步 el-input 的 v-model
-function insertAtCursor(text: string): boolean {
+// 将文本插入到聚焦输入框的光标位置，并同步 el-input 的 v-model
+function insertAtFocusedInput(text: string): boolean {
   const el = lastFocusedInputEl
   if (!el || !el.isConnected) return false
   const start = el.selectionStart ?? el.value.length
@@ -1279,9 +1376,15 @@ function insertAtCursor(text: string): boolean {
   return true
 }
 
-function insertVar(varName: string) {
+/**
+ * 插入环境变量引用 `{{key}}`。
+ * `target` 为脚本页签时优先写入对应的 CodeMirror 编辑器光标处（脚本已改为 CodeMirror，
+ * 不再是 input/textarea）；其余场景仍走「聚焦输入框 → 剪贴板」兜底。
+ */
+function insertVar(varName: string, target?: 'pre' | 'post') {
   const syntax = `{{${varName}}}`
-  if (insertAtCursor(syntax)) {
+  const editor = target === 'pre' ? preEditorRef.value : target === 'post' ? postEditorRef.value : null
+  if ((editor && editor.insertAtCursor(syntax)) || insertAtFocusedInput(syntax)) {
     ElMessage.success(`已插入 ${syntax}`)
     return
   }
@@ -1292,11 +1395,77 @@ function insertVar(varName: string) {
   )
 }
 
+// ====== 请求区 / 响应区上下拖拽分栏 ======
+// 请求区高度用像素而非百分比表达：面板自身高度来自父级 flex:1，
+// 百分比行高在该场景下不可靠（可能退化为 auto），拖动结果会不可预期。
+// 于是拖动时记录比例、以像素落地，窗口尺寸变化时再按比例重算。
+const debugPanelRef = ref<HTMLElement | null>(null)
+const reqPaneHeight = ref<number | null>(null)
+const reqPaneRatio = ref(0.52)
+const paneDragging = ref(false)
+/** 分割条自身高度 + 上下间距，算可用空间时要扣掉 */
+const PANE_RESIZER_SIZE = 26
+const REQ_PANE_MIN = 120
+const RESP_PANE_MIN = 120
+
+const reqPaneStyle = computed(() =>
+  reqPaneHeight.value == null ? undefined : { '--req-pane-h': `${reqPaneHeight.value}px` },
+)
+
+function panelHeight(): number {
+  return debugPanelRef.value?.clientHeight ?? 0
+}
+
+/** 约束请求区高度，保证响应区不会被压到看不见 */
+function clampReqPane(height: number): number {
+  const total = panelHeight()
+  if (total <= 0) return height
+  const max = Math.max(REQ_PANE_MIN, total - RESP_PANE_MIN - PANE_RESIZER_SIZE)
+  return Math.min(Math.max(Math.round(height), REQ_PANE_MIN), max)
+}
+
+/** 按当前比例重新计算请求区高度（首次布局与窗口尺寸变化时调用） */
+function applyReqPaneRatio() {
+  const total = panelHeight()
+  if (total <= 0) return
+  reqPaneHeight.value = clampReqPane(total * reqPaneRatio.value)
+}
+
+function startPaneDrag(e: MouseEvent) {
+  e.preventDefault()
+  const startY = e.clientY
+  const startHeight = reqPaneHeight.value ?? panelHeight() * reqPaneRatio.value
+  paneDragging.value = true
+  const onMove = (ev: MouseEvent) => {
+    const next = clampReqPane(startHeight + (ev.clientY - startY))
+    reqPaneHeight.value = next
+    const total = panelHeight()
+    if (total > 0) reqPaneRatio.value = next / total
+  }
+  const onUp = () => {
+    paneDragging.value = false
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+  // 拖拽期间禁用文本选中与光标变化，避免鼠标移出分割条后选中页面文字
+  document.body.style.cursor = 'row-resize'
+  document.body.style.userSelect = 'none'
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
+
 // 文本框旁「插入变量」弹层的显示状态（点选变量时直接关闭对应弹层）
 const urlVarVisible = ref(false)
 const bodyVarVisible = ref(false)
 const preVarVisible = ref(false)
 const postVarVisible = ref(false)
+
+/** 脚本编辑器暴露的插入接口（用于「插入变量」与「API 速查」写入光标处） */
+type ScriptEditorExposed = { insertAtCursor: (text: string) => boolean }
+const preEditorRef = ref<ScriptEditorExposed | null>(null)
+const postEditorRef = ref<ScriptEditorExposed | null>(null)
 
 // ====== 工作模式 ======
 /** 首次进入页面时，中间区域默认展示系统说明页；用户开始操作后进入调试界面 */
@@ -1354,6 +1523,9 @@ const form = reactive({
   bodyType: 'none' as BodyType,
   body: '',
   formBody: [emptyKV()] as KV[],
+  formData: [emptyFormDataPart()] as FormDataPart[],
+  requestFields: [] as FieldDoc[],
+  responseFields: [] as FieldDoc[],
   categoryId: undefined as string | undefined,
   preScript: '',
   postScript: '',
@@ -1366,7 +1538,7 @@ watch(form, () => {
 }, { deep: true })
 
 const reqTab = ref<'params' | 'headers' | 'body' | 'preScript' | 'postScript'>('params')
-const respTab = ref<'body' | 'headers' | 'requestHeaders' | 'requestDetail' | 'scriptLog'>('body')
+const respTab = ref<'body' | 'headers' | 'requestHeaders' | 'responseFields' | 'requestDetail' | 'scriptLog'>('body')
 const respView = ref<'pretty' | 'raw'>('pretty')
 const requestHeaders = ref<{ key: string; value: string }[]>([])
 const loading = ref(false)
@@ -1440,6 +1612,7 @@ const hasHeaders = computed(() => form.headers.some(h => h.key.trim()))
 const hasBody = computed(() => {
   if (form.bodyType === 'none') return false
   if (form.bodyType === 'form') return form.formBody.some(f => f.key.trim())
+  if (form.bodyType === 'formdata') return form.formData.some(f => f.enabled && f.key.trim())
   return form.body.trim().length > 0
 })
 const hasPreScript = computed(() => form.preScript.trim().length > 0)
@@ -1517,6 +1690,9 @@ function restoreTab(tab: ReturnType<typeof snapshotCurrentTab>) {
   form.bodyType = tab.form.bodyType
   form.body = tab.form.body
   form.formBody = JSON.parse(JSON.stringify(tab.form.formBody))
+  form.formData = JSON.parse(JSON.stringify(tab.form.formData))
+  form.requestFields = JSON.parse(JSON.stringify(tab.form.requestFields ?? []))
+  form.responseFields = JSON.parse(JSON.stringify(tab.form.responseFields ?? []))
   form.categoryId = tab.form.categoryId
   form.preScript = tab.form.preScript
   form.postScript = tab.form.postScript
@@ -1744,7 +1920,9 @@ async function sendRequest() {
   const resolvedFormBody = localResolveKv(form.formBody)
   const origFormBody = form.formBody
   form.formBody = resolvedFormBody
-  const { body, contentType } = buildBody(form.method, form.bodyType, form.body, form.formBody)
+  // form-data 字段名可含 {{变量}}，但文件内容（base64）不做变量替换
+  const resolvedFormData = form.formData.map(p => ({ ...p, key: localResolve(p.key) }))
+  const { body, contentType, multipart } = buildBody(form.method, form.bodyType, form.body, form.formBody, resolvedFormData)
   form.body = origBody
   form.formBody = origFormBody
 
@@ -1790,6 +1968,7 @@ async function sendRequest() {
         url,
         headers: finalHeaders,
         body,
+        multipart,
         onChunk: (text, done) => {
           const acc = (stillActive ? response.value : targetTab?.response)
           if (acc) {
@@ -1802,7 +1981,7 @@ async function sendRequest() {
         },
       })
     } else {
-      info = await invokeHttpRequest(form.method, url, finalHeaders, body)
+      info = await invokeHttpRequest(form.method, url, finalHeaders, body, multipart)
     }
 
     // Run post-request script
@@ -1884,6 +2063,7 @@ function loadHistory(h: HistoryItem) {
   form.bodyType = h.bodyType
   form.body = h.body
   form.formBody = h.formBody.length ? h.formBody : [emptyKV()]
+  form.formData = h.formData.length ? h.formData : [emptyFormDataPart()]
   form.preScript = h.preScript ?? ''
   form.postScript = h.postScript ?? ''
   form.categoryId = h.categoryId ?? undefined
@@ -1913,6 +2093,9 @@ async function saveCurrentRequest() {
         headers: JSON.parse(JSON.stringify(form.headers)),
         bodyType: form.bodyType, body: form.body,
         formBody: JSON.parse(JSON.stringify(form.formBody)),
+        formData: JSON.parse(JSON.stringify(form.formData)),
+        requestFields: JSON.parse(JSON.stringify(form.requestFields)),
+        responseFields: JSON.parse(JSON.stringify(form.responseFields)),
         categoryId: form.categoryId ?? null,
         preScript: form.preScript, postScript: form.postScript,
       })
@@ -1937,6 +2120,9 @@ async function saveCurrentRequest() {
       headers: JSON.parse(JSON.stringify(form.headers)),
       bodyType: form.bodyType, body: form.body,
       formBody: JSON.parse(JSON.stringify(form.formBody)),
+      formData: JSON.parse(JSON.stringify(form.formData)),
+      requestFields: JSON.parse(JSON.stringify(form.requestFields)),
+      responseFields: JSON.parse(JSON.stringify(form.responseFields)),
       categoryId: form.categoryId ?? null,
       projectId: props.projectId ?? null,
       preScript: form.preScript, postScript: form.postScript,
@@ -1976,6 +2162,9 @@ function loadSavedRequest(req: SavedRequest) {
     newTab.form.bodyType = req.bodyType as BodyType
     newTab.form.body = req.body
     newTab.form.formBody = req.formBody?.length ? JSON.parse(JSON.stringify(req.formBody)) : [emptyKV()]
+    newTab.form.formData = req.formData?.length ? JSON.parse(JSON.stringify(req.formData)) : [emptyFormDataPart()]
+    newTab.form.requestFields = req.requestFields?.length ? JSON.parse(JSON.stringify(req.requestFields)) : []
+    newTab.form.responseFields = req.responseFields?.length ? JSON.parse(JSON.stringify(req.responseFields)) : []
     newTab.form.preScript = req.preScript ?? ''
     newTab.form.postScript = req.postScript ?? ''
     newTab.form.categoryId = req.categoryId ?? undefined
@@ -1991,6 +2180,9 @@ function loadSavedRequest(req: SavedRequest) {
   form.bodyType = req.bodyType as BodyType
   form.body = req.body
   form.formBody = req.formBody?.length ? req.formBody : [emptyKV()]
+  form.formData = req.formData?.length ? req.formData : [emptyFormDataPart()]
+  form.requestFields = req.requestFields?.length ? JSON.parse(JSON.stringify(req.requestFields)) : []
+  form.responseFields = req.responseFields?.length ? JSON.parse(JSON.stringify(req.responseFields)) : []
   form.preScript = req.preScript ?? ''
   form.postScript = req.postScript ?? ''
   form.categoryId = req.categoryId ?? undefined
@@ -2001,6 +2193,57 @@ function loadSavedRequest(req: SavedRequest) {
   scriptLog.value = []
   const tab = tabs.value.find(t => t.id === activeTabId.value)
   if (tab) tab.title = req.name
+}
+
+// ====== 响应字段：从响应 JSON 生成 ======
+/** 从当前响应 JSON 生成响应字段表 */
+function generateResponseFields() {
+  const body = response.value?.body
+  if (!body || !body.trim()) { ElMessage.warning('暂无响应内容，请先发送请求'); return }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stripJsonComments(body))
+  } catch {
+    ElMessage.warning('响应内容不是合法 JSON，无法生成')
+    return
+  }
+  const rows = flattenJsonToFieldDocs(parsed)
+  if (!rows.length) { ElMessage.warning('未能从响应中解析出字段'); return }
+  form.responseFields = mergeFieldDocs(rows, form.responseFields)
+  ElMessage.success(`已生成 ${rows.length} 个响应字段`)
+}
+
+// ====== 字段描述弹窗（从 Body JSON 提取）======
+const fieldDocDialogVisible = ref(false)
+const dialogFields = ref<FieldDoc[]>([])
+
+/** 从当前 JSON 请求体提取字段并合并进弹窗表格（保留已填描述） */
+function extractJsonBodyFields() {
+  if (!form.body.trim()) { ElMessage.warning('请求体为空'); return }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stripJsonComments(form.body))
+  } catch {
+    ElMessage.warning('请求体不是合法 JSON，无法提取')
+    return
+  }
+  const rows = flattenJsonToFieldDocs(parsed)
+  if (!rows.length) { ElMessage.warning('未能从 JSON 中解析出字段'); return }
+  dialogFields.value = mergeFieldDocs(rows, dialogFields.value)
+  ElMessage.success(`已提取 ${rows.length} 个字段`)
+}
+
+/** 打开弹窗：以已保存的字段描述为初始值；为空时自动提取一次 */
+function openFieldDocDialog() {
+  dialogFields.value = JSON.parse(JSON.stringify(form.requestFields ?? []))
+  fieldDocDialogVisible.value = true
+  if (!dialogFields.value.length) extractJsonBodyFields()
+}
+
+function confirmFieldDocs() {
+  form.requestFields = JSON.parse(JSON.stringify(dialogFields.value))
+  fieldDocDialogVisible.value = false
+  ElMessage.success('字段描述已更新')
 }
 
 async function handleDeleteSavedRequest(req: SavedRequest) {
@@ -2051,7 +2294,17 @@ const curlCommand = computed(() => {
     parts.push(`-H ${shellQuote(`${resolvedHeaderValue(h.key)}: ${resolvedHeaderValue(h.value)}`)}`)
   }
 
-  if (form.bodyType !== 'none' && form.body.trim()) {
+  if (form.bodyType === 'formdata') {
+    for (const p of enabledFormData.value) {
+      const key = resolvedHeaderValue(p.key)
+      if (p.type === 'file') {
+        // curl 用 @ 语法引用本地文件；本工具文件以 base64 内嵌，此处仅作提示性还原
+        parts.push(`-F ${shellQuote(`${key}=@${p.fileName || ''}`)}`)
+      } else {
+        parts.push(`-F ${shellQuote(`${key}=${resolvedHeaderValue(p.value || '')}`)}`)
+      }
+    }
+  } else if (form.bodyType !== 'none' && form.body.trim()) {
     const body = resolveVariables(form.body)
     parts.push(`-d ${shellQuote(body)}`)
   }
@@ -2084,6 +2337,7 @@ const contentTypeLabel = computed(() => {
   switch (form.bodyType) {
     case 'json': return 'application/json'
     case 'form': return 'application/x-www-form-urlencoded'
+    case 'formdata': return 'multipart/form-data'
     case 'text': return 'text/plain'
     default: return ''
   }
@@ -2096,6 +2350,7 @@ const bodyByteSize = computed(() => {
 })
 
 const enabledFormBody = computed(() => form.formBody.filter(f => f.enabled && f.key))
+const enabledFormData = computed(() => form.formData.filter(f => f.enabled && f.key.trim()))
 
 const resolvedRespHeaders = computed(() => {
   if (!response.value) return []
@@ -2220,6 +2475,10 @@ function handleKeydown(e: KeyboardEvent) {
 onMounted(async () => {
   loadPersistedHistory()
   window.addEventListener('keydown', handleKeydown)
+  // 请求区/响应区分栏：等首次布局完成后再把比例落成像素高度
+  window.addEventListener('resize', applyReqPaneRatio)
+  await nextTick()
+  applyReqPaneRatio()
   // 加载团队列表（认证/同步已在公共头部 AppLayout 初始化）
   await loadTeams()
   // 加载当前团队成员，恢复 canWrite 等权限；否则刷新直接进入此页时环境选择器等会被禁用
@@ -2242,10 +2501,15 @@ onMounted(async () => {
       showWelcome.value = false
     }
   }
+  // 首帧可能是「欢迎页」占位（此时调试面板尚未挂载，取不到高度），
+  // 面板真正渲染出来后再按比例算一次请求区高度。
+  await nextTick()
+  applyReqPaneRatio()
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeydown)
+  window.removeEventListener('resize', applyReqPaneRatio)
 })
 </script>
 

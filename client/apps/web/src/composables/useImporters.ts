@@ -1,7 +1,7 @@
 import type { Category } from '@/composables/useCategories'
 import type { SavedRequest } from '@/types'
-import type { KV, Method, BodyType } from '@/types'
-import { uid, now } from '@/utils'
+import type { KV, Method, BodyType, FormDataPart, FieldDoc } from '@/types'
+import { uid, now, schemaToFieldDocs } from '@/utils'
 
 /** 导入结果统计 */
 export interface ImportResult {
@@ -80,11 +80,20 @@ function openApiOpToRequest(
 ): SavedRequest {
   const params: KV[] = []
   const headers: KV[] = []
+  const requestFields: FieldDoc[] = []
   for (const p of op.parameters || []) {
     const inWhere = p.in
     const kv: KV = { key: p.name, value: p.example ?? p.schema?.default ?? '', enabled: true }
     if (inWhere === 'query') params.push(kv)
     else if (inWhere === 'header') headers.push(kv)
+    if (p.name) {
+      requestFields.push({
+        key: p.name,
+        fieldType: p.schema?.type ?? 'string',
+        required: Boolean(p.required),
+        description: p.description ?? '',
+      })
+    }
   }
   let body = ''
   let bodyType: SavedRequest['bodyType'] = 'none'
@@ -95,9 +104,18 @@ function openApiOpToRequest(
     if (jsonSchema) {
       bodyType = 'json'
       body = schemaToExample(jsonSchema.schema)
+      requestFields.push(...schemaToFieldDocs(jsonSchema.schema))
     } else if (formSchema) {
       bodyType = 'form'
+      requestFields.push(...schemaToFieldDocs(formSchema.schema))
     }
+  }
+  // 响应字段表：取第一个 2xx JSON 响应 schema
+  let responseFields: FieldDoc[] = []
+  const responses = op.responses || {}
+  const okKey = Object.keys(responses).find(k => /^2\d\d$/.test(k) && responses[k]?.content?.['application/json']?.schema)
+  if (okKey) {
+    responseFields = schemaToFieldDocs(responses[okKey].content['application/json'].schema)
   }
   const ts = nowStr()
   return {
@@ -110,6 +128,9 @@ function openApiOpToRequest(
     bodyType,
     body,
     formBody: [],
+    formData: [],
+    requestFields,
+    responseFields,
     categoryId,
     projectId: null,
     preScript: '',
@@ -146,6 +167,23 @@ function defaultForType(t?: string): any {
   }
 }
 
+/** 把字段描述表转换为 OpenAPI schema（仅取顶层字段；含 `.` / `[]` 的嵌套路径导出时跳过）。 */
+function fieldDocsToSchema(fields: FieldDoc[]): any {
+  const properties: Record<string, any> = {}
+  const required: string[] = []
+  for (const f of fields) {
+    const key = f.key.trim()
+    if (!key || key.includes('.') || key.includes('[')) continue
+    const prop: any = { type: f.fieldType || 'string' }
+    if (f.description) prop.description = f.description
+    properties[key] = prop
+    if (f.required) required.push(key)
+  }
+  const schema: any = { type: 'object', properties }
+  if (required.length) schema.required = required
+  return schema
+}
+
 /** 导出为 OpenAPI 3.0 文档 */
 export function exportOpenApi(categories: Category[], requests: SavedRequest[]): string {
   const paths: Record<string, any> = {}
@@ -168,20 +206,42 @@ export function exportOpenApi(categories: Category[], requests: SavedRequest[]):
       }
     }
     const params: any[] = []
+    const reqDocMap = new Map((req.requestFields || []).filter(f => f.key.trim()).map(f => [f.key.trim(), f]))
     for (const p of req.params || []) {
-      if (p.enabled && p.key) params.push({ name: p.key, in: 'query', schema: { type: 'string' }, example: p.value })
+      if (p.enabled && p.key) {
+        const entry: any = { name: p.key, in: 'query', schema: { type: 'string' }, example: p.value }
+        const doc = reqDocMap.get(p.key)
+        if (doc?.description) entry.description = doc.description
+        params.push(entry)
+      }
     }
     for (const h of req.headers || []) {
-      if (h.enabled && h.key) params.push({ name: h.key, in: 'header', schema: { type: 'string' }, example: h.value })
+      if (h.enabled && h.key) {
+        const entry: any = { name: h.key, in: 'header', schema: { type: 'string' }, example: h.value }
+        const doc = reqDocMap.get(h.key)
+        if (doc?.description) entry.description = doc.description
+        params.push(entry)
+      }
     }
     if (params.length) op.parameters = params
+    const reqSchema = fieldDocsToSchema(req.requestFields || [])
     if (req.bodyType === 'json' && req.body) {
       op.requestBody = {
-        content: { 'application/json': { schema: { type: 'object' } } },
+        content: { 'application/json': { schema: Object.keys(reqSchema.properties).length ? reqSchema : { type: 'object' } } },
       }
     } else if (req.bodyType === 'form' && req.formBody?.length) {
       op.requestBody = {
-        content: { 'application/x-www-form-urlencoded': { schema: { type: 'object' } } },
+        content: { 'application/x-www-form-urlencoded': { schema: Object.keys(reqSchema.properties).length ? reqSchema : { type: 'object' } } },
+      }
+    }
+    // 响应字段描述写回 200 响应 schema
+    const respSchema = fieldDocsToSchema(req.responseFields || [])
+    if (Object.keys(respSchema.properties).length) {
+      op.responses = {
+        '200': {
+          description: 'Successful response',
+          content: { 'application/json': { schema: respSchema } },
+        },
       }
     }
     paths[url][method] = op
@@ -256,6 +316,13 @@ function postmanExtractScript(node: any, listen: 'prerequest' | 'test'): string 
   return blocks.join('\n\n')
 }
 
+/** 从 Postman 文件项 `src` 提取文件名（`src` 可能是字符串或数组；兼容 / 与 \ 分隔符） */
+function postmanFileName(src: any): string {
+  const path = typeof src === 'string' ? src : Array.isArray(src) && typeof src[0] === 'string' ? src[0] : ''
+  const parts = path.split(/[\\/]/)
+  return parts[parts.length - 1] || ''
+}
+
 function postmanItemToRequest(node: any, categoryId: string | null): SavedRequest {
   const req = node.request
   const method: Method = (req.method || 'GET').toUpperCase() as Method
@@ -279,12 +346,27 @@ function postmanItemToRequest(node: any, categoryId: string | null): SavedReques
   }
   let body = ''
   let bodyType: SavedRequest['bodyType'] = 'none'
+  const formData: FormDataPart[] = []
   const bodyObj = req.body
   if (bodyObj?.mode === 'raw') {
     bodyType = 'json'
     body = bodyObj.raw ?? ''
   } else if (bodyObj?.mode === 'urlencoded' && Array.isArray(bodyObj.urlencoded)) {
     bodyType = 'form'
+  } else if (bodyObj?.mode === 'formdata' && Array.isArray(bodyObj.formdata)) {
+    // Postman form-data：逐项转为 FormDataPart（文本 / 文件）。
+    // 文件项 src 仅为本地路径，导入时无法读取内容，故只保留文件名，用户可导入后重新选择。
+    bodyType = 'formdata'
+    for (const item of bodyObj.formdata) {
+      const key = typeof item?.key === 'string' ? item.key : ''
+      if (!key) continue
+      const enabled = !item.disabled
+      if (item.type === 'file') {
+        formData.push({ enabled, key, type: 'file', fileName: postmanFileName(item.src), fileData: '', fileSize: 0 })
+      } else {
+        formData.push({ enabled, key, type: 'text', value: item.value ?? '' })
+      }
+    }
   }
   const ts = nowStr()
   return {
@@ -297,6 +379,9 @@ function postmanItemToRequest(node: any, categoryId: string | null): SavedReques
     bodyType,
     body,
     formBody: [],
+    formData,
+    requestFields: [],
+    responseFields: [],
     categoryId,
     projectId: null,
     preScript: postmanExtractScript(node, 'prerequest'),
@@ -439,6 +524,9 @@ function parseSingleCurl(text: string): SavedRequest | null {
     bodyType,
     body,
     formBody: [],
+    formData: [],
+    requestFields: [],
+    responseFields: [],
     categoryId: null,
     projectId: null,
     preScript: '',
@@ -694,6 +782,9 @@ export function parseApipost(text: string): ParsedCollection {
       bodyType,
       body,
       formBody,
+      formData: [],
+      requestFields: [],
+      responseFields: [],
       categoryId: parentId,
       projectId: null,
       preScript: apipostExtractScript(req.pre_tasks),

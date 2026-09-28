@@ -27,6 +27,8 @@ const fields = computed<FieldDef[]>(() => [
   { key: 'bodyType', label: t('version.fields.bodyType') },
   { key: 'body', label: t('version.fields.body') },
   { key: 'formBody', label: t('version.fields.formBody') },
+  { key: 'requestFields', label: t('version.fields.requestFields') },
+  { key: 'responseFields', label: t('version.fields.responseFields') },
   { key: 'categoryId', label: t('version.fields.categoryId') },
   { key: 'preScript', label: t('version.fields.preScript') },
   { key: 'postScript', label: t('version.fields.postScript') },

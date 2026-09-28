@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "canghai-api-debugger",
+  "productName": "canghai-api",
   "version": "0.1.0",
-  "identifier": "com.ltsh.canghai-api-debugger",
+  "identifier": "com.ltsh.canghai-api",
   "build": {
     "beforeDevCommand": "pnpm --filter web dev",
     "beforeBuildCommand": "pnpm --filter web build",
@@ -30,11 +30,19 @@
     "active": true,
     "targets": "all",
     "icon": [
-      "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "offlineInstaller",
+        "silent": true
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico"
+      }
+    }
   }
 }

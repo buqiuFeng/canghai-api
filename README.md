@@ -104,7 +104,7 @@
 ## 项目结构
 
 ```
-canghai-api-doc/
+canghai-api/
 ├── client/
 │   ├── apps/
 │   │   ├── web/                        # Vue 3 前端应用
@@ -184,6 +184,13 @@ pnpm build
 ```
 
 构建产物位于 `client/apps/desktop/target/release/bundle/`。
+
+#### Windows 10 / 11 兼容性
+
+- exe 已静态链接 MSVC 运行库（`client/apps/desktop/.cargo/config.toml` 中的 `+crt-static`），在未安装 VC++ 运行库的 Windows 10/11 上也能直接双击运行，不再依赖 `VCRUNTIME140.dll`。
+- 仍需 **Microsoft Edge WebView2 运行时**（Tauri 的渲染内核）：
+  - 分发安装包（`bundle/nsis`、`bundle/msi`）时会内嵌 bootstrapper 并静默安装 WebView2，安装过程需联网；完全离线的内网环境请将 `tauri.conf.json` 中 `webviewInstallMode.type` 改为 `offlineInstaller`（安装包体积增加约 127MB）。
+  - 直接分发裸 exe 时不会走安装包流程，目标机需预先安装 [WebView2 Runtime](https://developer.microsoft.com/microsoft-edge/webview2/)，否则启动会提示找不到 WebView2。
 
 ### 启动服务端（可选）
 

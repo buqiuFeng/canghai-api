@@ -122,7 +122,9 @@ dist
 target
 
 # ===== JWT 密钥（私钥严禁提交，仅服务端持有）=====
-spring-boot-server/src/main/resources/keys/private.pem
+server/client-server/src/main/resources/keys/private.pem
 # 客户端内置的公钥占位文件可由脚本覆盖，但绝不提交私钥
 *.pem.key
 *.key.pem
+
+/docs

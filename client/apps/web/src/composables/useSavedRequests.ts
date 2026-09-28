@@ -2,7 +2,7 @@ import { watch } from 'vue'
 import { useProjects } from './useProjects'
 import { useDataMode } from './useDataMode'
 import type { Category } from '@/composables/useCategories'
-import type { BodyType, KV, Method, SavedRequest } from '@/types'
+import type { BodyType, KV, Method, SavedRequest, FormDataPart, FieldDoc } from '@/types'
 import { uid, now } from '@/utils'
 import {
   parseOpenApi,
@@ -102,6 +102,9 @@ async function saveRequest(data: {
   bodyType: string
   body: string
   formBody: KV[]
+  formData: FormDataPart[]
+  requestFields?: FieldDoc[]
+  responseFields?: FieldDoc[]
   categoryId: string | null
   projectId?: string | null
   preScript?: string
@@ -121,6 +124,9 @@ async function saveRequest(data: {
     bodyType: data.bodyType as BodyType,
     body: data.body,
     formBody: data.formBody,
+    formData: data.formData,
+    requestFields: data.requestFields ?? [],
+    responseFields: data.responseFields ?? [],
     categoryId: data.categoryId,
     projectId: data.projectId ?? null,
     preScript: data.preScript ?? '',
@@ -142,8 +148,11 @@ async function saveRequest(data: {
       params: req.params,
       headers: req.headers,
       bodyType: req.bodyType,
-      body: req.body,
-      formBody: req.formBody,
+              body: req.body,
+              formBody: req.formBody,
+              formData: req.formData,
+      requestFields: req.requestFields,
+      responseFields: req.responseFields,
       preScript: req.preScript,
       postScript: req.postScript,
       sortOrder: req.sortOrder,
@@ -178,6 +187,8 @@ async function updateRequest(req: SavedRequest) {
           { key: 'method', label: '方法' },
           { key: 'url', label: 'URL' },
           { key: 'categoryId', label: '分类' },
+          { key: 'requestFields', label: '请求字段' },
+          { key: 'responseFields', label: '响应字段' },
         ],
         onConfirm: async () => {
           const updated = await repo.updateServer({
@@ -192,6 +203,9 @@ async function updateRequest(req: SavedRequest) {
             bodyType: req.bodyType,
             body: req.body,
             formBody: req.formBody,
+            formData: req.formData,
+            requestFields: req.requestFields,
+            responseFields: req.responseFields,
             preScript: req.preScript,
             postScript: req.postScript,
             sortOrder: req.sortOrder,
@@ -214,8 +228,11 @@ async function updateRequest(req: SavedRequest) {
       params: req.params,
       headers: req.headers,
       bodyType: req.bodyType,
-      body: req.body,
-      formBody: req.formBody,
+              body: req.body,
+              formBody: req.formBody,
+              formData: req.formData,
+      requestFields: req.requestFields,
+      responseFields: req.responseFields,
       preScript: req.preScript,
       postScript: req.postScript,
       sortOrder: req.sortOrder,
@@ -356,6 +373,9 @@ async function importRequests(
       bodyType: req.bodyType || 'none',
       body: req.body || '',
       formBody: req.formBody || [],
+      formData: req.formData || [],
+      requestFields: req.requestFields || [],
+      responseFields: req.responseFields || [],
       categoryId: newCatId,
       projectId: projectId ?? req.projectId ?? null,
       preScript: req.preScript ?? '',

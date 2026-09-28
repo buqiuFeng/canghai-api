@@ -1,0 +1,17 @@
+# Windows 10 兼容性：静态链接 MSVC C 运行库（/MT）。
+#
+# 默认的 x86_64-pc-windows-msvc 目标是「动态链接」CRT，生成的 exe 依赖目标机上的
+# VCRUNTIME140.dll / MSVCP140.dll（即 VC++ 2015-2022 可再发行组件包）。全新的、
+# 精简版的、或从未装过 VC++ 运行库的 Windows 10 上，双击 exe 会直接报
+# 「缺少 VCRUNTIME140.dll」而无法启动。
+#
+# 打开 crt-static 后，运行库被编进 exe（体积增加约几百 KB），
+# 裸 exe 拷贝到任意 Windows 10/11 上都能直接运行，无需先装运行库。
+#
+# 注意：修改此文件会使 cargo 认为编译指纹变化，需要一次性全量重新编译。
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]
+
+# 如需同时产出 32 位版本，取消下面注释（并 rustup target add i686-pc-windows-msvc）。
+# [target.i686-pc-windows-msvc]
+# rustflags = ["-C", "target-feature=+crt-static"]

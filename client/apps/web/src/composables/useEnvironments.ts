@@ -170,8 +170,33 @@ async function getVariables(envId: string, force = false): Promise<EnvironmentVa
   }
 }
 
+/** 归一化变量 key：忽略首尾空白，用于「同名变量更新而非新增」的判定 */
+function normalizeVarKey(key: string | null | undefined): string {
+  return (key ?? '').trim()
+}
+
+/**
+ * 取某环境下的变量列表，用于按 key 去重：
+ * 优先用激活环境的内存列表，其次用按环境分组的缓存，最后按需从本地库拉取。
+ */
+async function listVariablesForDedupe(envId: string): Promise<EnvironmentVariable[]> {
+  if (activeEnv.value?.id === envId && activeVariables.value.length) return activeVariables.value
+  const cached = variablesCache.value[envId]
+  if (cached && cached.length) return cached
+  return getVariables(envId)
+}
+
 async function saveVariable(envId: string, key: string, value: string): Promise<EnvironmentVariable> {
-  const vars = variablesCache.value[envId] || []
+  const vars = await listVariablesForDedupe(envId)
+  // 同 key 的变量已存在时更新而不是新增：脚本 `pm.environment.set(key, ...)` 重复写入同一
+  // 变量、或在环境管理中新增已存在的 key，都不应产生重复变量（此前 key 带首尾空白或
+  // 未加载进内存时会漏判，导致「更新」变成「新增」）。
+  const target = normalizeVarKey(key)
+  const existing = target ? vars.find(v => normalizeVarKey(v.key) === target) : undefined
+  if (existing) {
+    await updateVariable({ ...existing, value })
+    return existing
+  }
   const maxOrder = Math.max(0, ...vars.map(v => v.sortOrder ?? 0))
   const v: EnvironmentVariable = {
     id: uid(),

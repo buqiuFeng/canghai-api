@@ -154,6 +154,24 @@ pub struct ProjectMember {
 }
 
 
+/// 接口字段描述（apipost 文档风格）：字段名 / 类型 / 必填 / 描述。
+///
+/// 用于 `SavedRequest` 的请求字段表与响应字段表，字段名为扁平路径写法
+/// （如 `data.list[].id`），不建树形结构。必须放在 `db/` 下且字段为 `pub`，
+/// 以便 `scripts/contract-check.mjs` 解析（与 TS `@/types` 的 FieldDoc 对齐）。
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct FieldDoc {
+    #[serde(default, deserialize_with = "null_to_empty_string")]
+    pub key: String,
+    #[serde(default, deserialize_with = "null_to_empty_string")]
+    pub field_type: String,
+    #[serde(default)]
+    pub required: bool,
+    #[serde(default, deserialize_with = "null_to_empty_string")]
+    pub description: String,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, Validate)]
 #[serde(rename_all = "camelCase")]
 pub struct SavedRequest {
@@ -178,6 +196,14 @@ pub struct SavedRequest {
     pub body: String,
     #[serde(default)]
     pub form_body: serde_json::Value,
+    #[serde(default)]
+    pub form_data: serde_json::Value,
+    /// 请求字段描述表（apipost 文档风格）
+    #[serde(default, deserialize_with = "null_to_empty_vec")]
+    pub request_fields: Vec<FieldDoc>,
+    /// 响应字段描述表（apipost 文档风格）
+    #[serde(default, deserialize_with = "null_to_empty_vec")]
+    pub response_fields: Vec<FieldDoc>,
     #[serde(default, deserialize_with = "empty_string_to_none")]
     pub category_id: Option<String>,
     #[serde(default, deserialize_with = "empty_string_to_none")]
@@ -268,6 +294,8 @@ pub struct HistoryItem {
     pub body: String,
     #[serde(default)]
     pub form_body: serde_json::Value,
+    #[serde(default)]
+    pub form_data: serde_json::Value,
     #[serde(default, deserialize_with = "empty_string_to_none")]
     pub category_id: Option<String>,
     /// 请求前脚本（前端 preScript）。此前结构体缺该字段，脚本落库即丢。

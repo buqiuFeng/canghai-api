@@ -66,6 +66,8 @@ export default {
       bodyType: 'Body 类型',
       body: '请求体',
       formBody: '表单',
+      requestFields: '请求字段',
+      responseFields: '响应字段',
       categoryId: '分类',
       preScript: '前置脚本',
       postScript: '后置脚本',

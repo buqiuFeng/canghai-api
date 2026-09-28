@@ -188,11 +188,14 @@ export function useScriptEngine(
       scriptVars.set(key, value)
     }
     if (activeEnv.value) {
+      // key 比较忽略首尾空白，避免同一变量因空白差异被判为「不存在」而新增一条
+      const normKey = (k: string) => (k ?? '').trim()
       for (const [key, value] of response.persistVars ?? []) {
-        const existing = activeVariables.value.find(x => x.key === key)
+        const existing = activeVariables.value.find(x => normKey(x.key) === normKey(key))
         if (existing) {
           await updateVariable({ ...existing, value })
         } else {
+          // saveVariable 内部同样按 key 去重（已存在则更新），此处兜底避免产生重复变量
           await saveVariable(activeEnv.value.id, key, value)
         }
       }

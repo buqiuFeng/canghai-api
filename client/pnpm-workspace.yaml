@@ -3,3 +3,5 @@ packages:
 allowBuilds:
   esbuild: false
   vue-demi: false
+minimumReleaseAgeExclude:
+  - '@lezer/highlight@1.2.4'

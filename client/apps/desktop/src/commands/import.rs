@@ -47,6 +47,9 @@ struct ParsedRequest {
     body_type: String,
     body: String,
     form_body: Value,
+    form_data: Value,
+    request_fields: Value,
+    response_fields: Value,
     /// 源分类 id；落库阶段映射为新 UUID
     category_id: Option<String>,
     pre_script: String,
@@ -395,6 +398,9 @@ fn openapi_op_to_request(
         body_type,
         body,
         form_body: Value::Array(vec![]),
+        form_data: Value::Array(vec![]),
+        request_fields: Value::Array(vec![]),
+        response_fields: Value::Array(vec![]),
         category_id,
         pre_script: String::new(),
         post_script: String::new(),
@@ -515,6 +521,17 @@ fn postman_extract_script(node: &Value, listen: &str) -> String {
     blocks.join("\n\n")
 }
 
+/// 从 Postman 文件项的 `src` 提取文件名。
+/// `src` 可能是字符串或字符串数组；路径分隔符兼容 `/` 与 `\`。
+fn postman_file_name(src: Option<&Value>) -> String {
+    let path = match src {
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Array(arr)) => arr.first().and_then(|x| x.as_str()).unwrap_or("").to_string(),
+        _ => String::new(),
+    };
+    path.rsplit(|c| c == '/' || c == '\\').next().unwrap_or("").to_string()
+}
+
 fn postman_item_to_request(node: &Value, category_id: Option<String>) -> ParsedRequest {
     let req = node.get("request").and_then(as_obj).cloned().unwrap_or_default();
     let method = empty_to(opt_str(&Value::Object(req.clone()), "method"), "GET").to_uppercase();
@@ -553,6 +570,7 @@ fn postman_item_to_request(node: &Value, category_id: Option<String>) -> ParsedR
 
     let mut body_type = "none".to_string();
     let mut body = String::new();
+    let mut form_data: Vec<Value> = Vec::new();
     if let Some(body_obj) = req.get("body").and_then(as_obj) {
         let mode = opt_str(&Value::Object(body_obj.clone()), "mode");
         if mode == "raw" {
@@ -561,6 +579,39 @@ fn postman_item_to_request(node: &Value, category_id: Option<String>) -> ParsedR
         } else if mode == "urlencoded" && body_obj.get("urlencoded").and_then(as_arr).is_some() {
             // 与 Java/前端一致：只标记为 form，不导入键值
             body_type = "form".to_string();
+        } else if mode == "formdata" {
+            // Postman form-data：逐项导入为前端 FormDataPart（文本 / 文件）。
+            // 文件项的 src 仅为本地路径，导入时无法读取内容，故只保留文件名，
+            // 用户导入后可在编辑器中重新选择文件替换。
+            if let Some(arr) = body_obj.get("formdata").and_then(as_arr) {
+                body_type = "formdata".to_string();
+                for item in arr {
+                    let key = item.get("key").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                    if key.is_empty() {
+                        continue;
+                    }
+                    let enabled = !item.get("disabled").and_then(|x| x.as_bool()).unwrap_or(false);
+                    let kind = item.get("type").and_then(|x| x.as_str()).unwrap_or("text");
+                    if kind == "file" {
+                        form_data.push(json!({
+                            "enabled": enabled,
+                            "key": key,
+                            "type": "file",
+                            "fileName": postman_file_name(item.get("src")),
+                            "fileData": "",
+                            "fileSize": 0,
+                        }));
+                    } else {
+                        let value = item.get("value").map(scalar_to_string).unwrap_or_default();
+                        form_data.push(json!({
+                            "enabled": enabled,
+                            "key": key,
+                            "type": "text",
+                            "value": value,
+                        }));
+                    }
+                }
+            }
         }
     }
 
@@ -574,6 +625,9 @@ fn postman_item_to_request(node: &Value, category_id: Option<String>) -> ParsedR
         body_type,
         body,
         form_body: Value::Array(vec![]),
+        form_data: Value::Array(form_data),
+        request_fields: Value::Array(vec![]),
+        response_fields: Value::Array(vec![]),
         category_id,
         pre_script: postman_extract_script(node, "prerequest"),
         post_script: postman_extract_script(node, "test"),
@@ -756,6 +810,9 @@ fn parse_single_curl(text: &str) -> Option<ParsedRequest> {
         body_type,
         body,
         form_body: Value::Array(vec![]),
+        form_data: Value::Array(vec![]),
+        request_fields: Value::Array(vec![]),
+        response_fields: Value::Array(vec![]),
         category_id: None,
         pre_script: String::new(),
         post_script: String::new(),
@@ -821,6 +878,9 @@ fn parse_canghai(doc: &Value) -> ParsedCollection {
                 body_type: empty_to(opt_str(r, "bodyType"), "none"),
                 body: opt_str(r, "body"),
                 form_body: r.get("formBody").cloned().unwrap_or(Value::Array(vec![])),
+                form_data: r.get("formData").cloned().unwrap_or(Value::Array(vec![])),
+                request_fields: r.get("requestFields").cloned().unwrap_or(Value::Array(vec![])),
+                response_fields: r.get("responseFields").cloned().unwrap_or(Value::Array(vec![])),
                 category_id: get_str(r, "categoryId").map(|s| s.to_string()),
                 pre_script: opt_str(r, "preScript"),
                 post_script: opt_str(r, "postScript"),
@@ -957,6 +1017,9 @@ fn parse_apipost(doc: &Value) -> ParsedCollection {
             body_type,
             body,
             form_body: Value::Array(form_body),
+            form_data: Value::Array(vec![]),
+            request_fields: Value::Array(vec![]),
+            response_fields: Value::Array(vec![]),
             category_id: parent_id,
             pre_script: apipost_extract_script(
                 req.get("pre_tasks")
@@ -1594,6 +1657,9 @@ fn build_and_write(
             body_type: empty_to(r.body_type.clone(), "none"),
             body: r.body.clone(),
             form_body: r.form_body.clone(),
+            form_data: r.form_data.clone(),
+            request_fields: serde_json::from_value(r.request_fields.clone()).unwrap_or_default(),
+            response_fields: serde_json::from_value(r.response_fields.clone()).unwrap_or_default(),
             category_id,
             project_id: Some(project_id.to_string()),
             pre_script: r.pre_script.clone(),

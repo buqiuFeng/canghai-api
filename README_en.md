@@ -104,7 +104,7 @@ All HTTP requests are issued by the Tauri Rust backend, completely bypassing the
 ## Project Structure
 
 ```
-canghai-api-doc/
+canghai-api/
 ├── client/
 │   ├── apps/
 │   │   ├── web/                        # Vue 3 frontend

@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import type { ApiResult, BackendResp } from '@/types'
+import type { MultipartPart } from '@/composables/useHttpRequest'
 
 /** HTTP 代理请求参数（allowPrivate 由全局设置决定）。 */
 export interface HttpSendReq {
@@ -7,6 +8,8 @@ export interface HttpSendReq {
   url: string
   headers: Record<string, string>
   body: string | null
+  /** 多部件表单（multipart/form-data），命中时优先于 body 发送 */
+  multipart?: MultipartPart[]
   stream?: boolean
   allowPrivate: boolean
 }

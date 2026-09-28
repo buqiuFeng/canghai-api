@@ -24,6 +24,15 @@
   --code-bg: #0f172a;
   --code-fg: #e2e8f0;
 
+  /* JSON 语法高亮（请求体编辑器）：浅色底取低明度色，保证在 surface 上可读 */
+  --json-key: #7c3aed;
+  --json-str: #15803d;
+  --json-num: #b45309;
+  --json-bool: #0369a1;
+  --json-var: #0891b2;
+  --json-comment: #94a3b8;
+  --json-punct: #64748b;
+
   /* 提示/告警底色 */
   --tint-warning: #fdf6ec;
   --tint-danger: #fef0f0;
@@ -156,6 +165,15 @@ html.dark {
   /* 代码块 / 响应体：暗色下加深底色，保持同色系终端观感 */
   --code-bg: #0b0e14;
   --code-fg: #cbd5e1;
+
+  /* JSON 语法高亮：暗色底改用高明度色，否则低明度色几乎不可见 */
+  --json-key: #c4b5fd;
+  --json-str: #86efac;
+  --json-num: #fbbf24;
+  --json-bool: #7dd3fc;
+  --json-var: #67e8f9;
+  --json-comment: #6b7386;
+  --json-punct: #94a3b8;
 
   /* 提示/告警底色：暗色下用半透明着色，避免浅底刺眼 */
   --tint-warning: rgba(245, 158, 11, 0.14);

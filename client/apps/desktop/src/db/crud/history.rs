@@ -7,7 +7,7 @@ pub fn get_all_history(conn: &DbConn, limit: i32, mode: DataMode) -> Result<Vec<
     let db = lock_db(conn)?;
     let mut stmt = db
         .prepare_cached(
-            "SELECT id, method, url, params, headers, body_type, body, form_body, category_id, status, create_time, pre_script, post_script, project_id
+            "SELECT id, method, url, params, headers, body_type, body, form_body, form_data, category_id, status, create_time, pre_script, post_script, project_id
              FROM ch_history WHERE data_mode = ?2 ORDER BY create_time DESC LIMIT ?1",
         )?;
     let rows = stmt
@@ -15,6 +15,7 @@ pub fn get_all_history(conn: &DbConn, limit: i32, mode: DataMode) -> Result<Vec<
             let params_str: String = row.get(3)?;
             let headers_str: String = row.get(4)?;
             let form_body_str: String = row.get(7)?;
+            let form_data_str: String = row.get(8)?;
             Ok(HistoryItem {
                 id: row.get(0)?,
                 method: row.get(1)?,
@@ -24,12 +25,13 @@ pub fn get_all_history(conn: &DbConn, limit: i32, mode: DataMode) -> Result<Vec<
                 body_type: row.get(5)?,
                 body: row.get(6)?,
                 form_body: serde_json::from_str(&form_body_str).unwrap_or(serde_json::Value::Array(vec![])),
-                category_id: row.get(8)?,
-                status: row.get(9)?,
-                create_time: row.get(10)?,
-                pre_script: row.get::<_, String>(11).unwrap_or_default(),
-                post_script: row.get::<_, String>(12).unwrap_or_default(),
-                project_id: row.get(13).unwrap_or_default(),
+                form_data: serde_json::from_str(&form_data_str).unwrap_or(serde_json::Value::Array(vec![])),
+                category_id: row.get(9)?,
+                status: row.get(10)?,
+                create_time: row.get(11)?,
+                pre_script: row.get::<_, String>(12).unwrap_or_default(),
+                post_script: row.get::<_, String>(13).unwrap_or_default(),
+                project_id: row.get(14).unwrap_or_default(),
             })
         })
         .map_err(DbError::Sql)?;
@@ -46,13 +48,14 @@ pub fn save_history_item(conn: &DbConn, item: &HistoryItem, mode: DataMode) -> R
     let params_str = item.params.to_string();
     let headers_str = item.headers.to_string();
     let form_body_str = item.form_body.to_string();
+    let form_data_str = item.form_data.to_string();
     db.execute(
-        "INSERT INTO ch_history (id, method, url, params, headers, body_type, body, form_body, category_id, status, create_time, pre_script, post_script, project_id, data_mode)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
+        "INSERT INTO ch_history (id, method, url, params, headers, body_type, body, form_body, form_data, category_id, status, create_time, pre_script, post_script, project_id, data_mode)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
         params![
             item.id, item.method, item.url,
             params_str, headers_str, item.body_type,
-            item.body, form_body_str, item.category_id,
+            item.body, form_body_str, form_data_str, item.category_id,
             item.status, item.create_time,
             item.pre_script, item.post_script, item.project_id,
             mode.as_db_value(),

@@ -66,6 +66,8 @@ export default {
       bodyType: 'Body Type',
       body: 'Body',
       formBody: 'Form',
+      requestFields: 'Request Fields',
+      responseFields: 'Response Fields',
       categoryId: 'Category',
       preScript: 'Pre-request Script',
       postScript: 'Post-request Script',

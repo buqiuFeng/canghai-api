@@ -125,9 +125,11 @@ pub fn save_request_for_merge(db: &Connection, req: &SavedRequest, mode: DataMod
     let params_str = req.params.to_string();
     let headers_str = req.headers.to_string();
     let form_body_str = req.form_body.to_string();
+    let request_fields_str = serde_json::to_string(&req.request_fields).unwrap_or_else(|_| "[]".to_string());
+    let response_fields_str = serde_json::to_string(&req.response_fields).unwrap_or_else(|_| "[]".to_string());
     db.execute(
-        "INSERT OR REPLACE INTO ch_saved_requests (id, user_id, name, method, url, params, headers, body_type, body, form_body, category_id, project_id, pre_script, post_script, sort_order, create_time, create_by, update_time, update_by, server_update_time, sync_version, dirty, data_mode) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,0,?22)",
-        params![req.id, req.user_id, req.name, req.method, req.url, params_str, headers_str, req.body_type, req.body, form_body_str, req.category_id, req.project_id, req.pre_script, req.post_script, req.sort_order, req.create_time, req.create_by, req.update_time, req.update_by, req.server_update_time, req.sync_version, mode.as_db_value()],
+        "INSERT OR REPLACE INTO ch_saved_requests (id, user_id, name, method, url, params, headers, body_type, body, form_body, category_id, project_id, pre_script, post_script, sort_order, create_time, create_by, update_time, update_by, server_update_time, sync_version, dirty, data_mode, request_fields, response_fields) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,0,?22,?23,?24)",
+        params![req.id, req.user_id, req.name, req.method, req.url, params_str, headers_str, req.body_type, req.body, form_body_str, req.category_id, req.project_id, req.pre_script, req.post_script, req.sort_order, req.create_time, req.create_by, req.update_time, req.update_by, req.server_update_time, req.sync_version, mode.as_db_value(), request_fields_str, response_fields_str],
     ).map_err(DbError::Sql)?;
     Ok(())
 }
@@ -137,9 +139,11 @@ pub fn update_request_for_merge(db: &Connection, req: &SavedRequest, mode: DataM
     let params_str = req.params.to_string();
     let headers_str = req.headers.to_string();
     let form_body_str = req.form_body.to_string();
+    let request_fields_str = serde_json::to_string(&req.request_fields).unwrap_or_else(|_| "[]".to_string());
+    let response_fields_str = serde_json::to_string(&req.response_fields).unwrap_or_else(|_| "[]".to_string());
     db.execute(
-        "UPDATE ch_saved_requests SET user_id=?2, name=?3, method=?4, url=?5, params=?6, headers=?7, body_type=?8, body=?9, form_body=?10, category_id=?11, project_id=?12, pre_script=?13, post_script=?14, sort_order=?15, create_time=?16, create_by=?17, update_time=?18, update_by=?19, server_update_time=?20, sync_version=?21, dirty=0 WHERE id=?1 AND data_mode=?22",
-        params![req.id, req.user_id, req.name, req.method, req.url, params_str, headers_str, req.body_type, req.body, form_body_str, req.category_id, req.project_id, req.pre_script, req.post_script, req.sort_order, req.create_time, req.create_by, req.update_time, req.update_by, req.server_update_time, req.sync_version, mode.as_db_value()],
+        "UPDATE ch_saved_requests SET user_id=?2, name=?3, method=?4, url=?5, params=?6, headers=?7, body_type=?8, body=?9, form_body=?10, category_id=?11, project_id=?12, pre_script=?13, post_script=?14, sort_order=?15, create_time=?16, create_by=?17, update_time=?18, update_by=?19, server_update_time=?20, sync_version=?21, request_fields=?23, response_fields=?24, dirty=0 WHERE id=?1 AND data_mode=?22",
+        params![req.id, req.user_id, req.name, req.method, req.url, params_str, headers_str, req.body_type, req.body, form_body_str, req.category_id, req.project_id, req.pre_script, req.post_script, req.sort_order, req.create_time, req.create_by, req.update_time, req.update_by, req.server_update_time, req.sync_version, mode.as_db_value(), request_fields_str, response_fields_str],
     ).map_err(DbError::Sql)?;
     Ok(())
 }

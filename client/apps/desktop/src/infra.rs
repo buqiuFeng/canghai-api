@@ -25,7 +25,7 @@ static SHARED_CLIENT: OnceLock<Option<reqwest::Client>> = OnceLock::new();
 const CONFIG_FILE: &str = "sync_config.json";
 
 /// 令牌在钥匙串中的 service 名（应用标识）。
-const TOKEN_SERVICE: &str = "canghai-api-doc";
+const TOKEN_SERVICE: &str = "canghai-api";
 /// 令牌在钥匙串中的 account 名。
 const TOKEN_ACCOUNT: &str = "auth_token";
 

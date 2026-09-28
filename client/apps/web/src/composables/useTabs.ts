@@ -1,6 +1,6 @@
 import { ref, computed, nextTick, watch } from 'vue'
 import type { TabState, ResponseInfo, ScriptLogEntry } from '@/types'
-import { emptyKV } from '@/types'
+import { emptyKV, emptyFormDataPart } from '@/types'
 
 const TABS_STORAGE_KEY = 'canghai.api.debugger.tabs'
 
@@ -39,6 +39,9 @@ function loadPersistedTabs(projectId: string): { tabs: TabState[]; activeTabId: 
           params: Array.isArray(t.form?.params) && t.form.params.length ? t.form.params : [emptyKV()],
           headers: Array.isArray(t.form?.headers) && t.form.headers.length ? t.form.headers : [emptyKV()],
           formBody: Array.isArray(t.form?.formBody) && t.form.formBody.length ? t.form.formBody : [emptyKV()],
+          formData: Array.isArray(t.form?.formData) && t.form.formData.length ? t.form.formData : [emptyFormDataPart()],
+          requestFields: Array.isArray(t.form?.requestFields) ? t.form.requestFields : [],
+          responseFields: Array.isArray(t.form?.responseFields) ? t.form.responseFields : [],
         },
         reqTab: t.reqTab ?? 'params',
         currentRequestId: t.currentRequestId ?? '',
@@ -63,6 +66,9 @@ export function createDefaultTabState(title?: string): TabState {
       bodyType: 'none',
       body: '',
       formBody: [emptyKV()],
+      formData: [emptyFormDataPart()],
+      requestFields: [],
+      responseFields: [],
       categoryId: undefined,
       preScript: '',
       postScript: '',
@@ -168,6 +174,9 @@ export function useTabs(getProjectId: () => string = () => '') {
         bodyType: getters.form.bodyType,
         body: getters.form.body,
         formBody: JSON.parse(JSON.stringify(getters.form.formBody)),
+        formData: JSON.parse(JSON.stringify(getters.form.formData)),
+        requestFields: JSON.parse(JSON.stringify(getters.form.requestFields)),
+        responseFields: JSON.parse(JSON.stringify(getters.form.responseFields)),
         categoryId: getters.form.categoryId,
         preScript: getters.form.preScript,
         postScript: getters.form.postScript,

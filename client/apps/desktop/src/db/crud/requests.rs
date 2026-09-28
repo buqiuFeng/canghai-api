@@ -10,8 +10,9 @@ pub fn get_all_saved_requests(conn: &DbConn, project_ids: &[String], mode: DataM
     let db = lock_db(conn)?;
     let placeholders: Vec<String> = (1..=project_ids.len()).map(|i| format!("?{i}")).collect();
     let sql = format!(
-        "SELECT id, user_id, name, method, url, params, headers, body_type, body, form_body,
-                category_id, project_id, pre_script, post_script, sort_order, create_time, create_by, update_time, update_by, server_update_time, sync_version
+        "SELECT id, user_id, name, method, url, params, headers, body_type, body, form_body, form_data,
+                category_id, project_id, pre_script, post_script, sort_order, create_time, create_by, update_time, update_by, server_update_time, sync_version,
+                request_fields, response_fields
          FROM ch_saved_requests
          WHERE project_id IN ({}) AND data_mode = ?{} AND deleted = 0 AND (?{} = 0 OR dirty = 1) ORDER BY sort_order, name",
         placeholders.join(","),
@@ -28,6 +29,9 @@ pub fn get_all_saved_requests(conn: &DbConn, project_ids: &[String], mode: DataM
             let params_str: String = row.get(5)?;
             let headers_str: String = row.get(6)?;
             let form_body_str: String = row.get(9)?;
+            let form_data_str: String = row.get(10)?;
+            let request_fields_str: String = row.get(22)?;
+            let response_fields_str: String = row.get(23)?;
             Ok(SavedRequest {
                 id: row.get(0)?,
                 user_id: row.get::<_, String>(1).unwrap_or_default(),
@@ -39,19 +43,22 @@ pub fn get_all_saved_requests(conn: &DbConn, project_ids: &[String], mode: DataM
                 body_type: row.get(7)?,
                 body: row.get(8)?,
                 form_body: serde_json::from_str(&form_body_str).unwrap_or(serde_json::Value::Array(vec![])),
-                category_id: row.get(10)?,
-                project_id: row.get(11)?,
-                pre_script: row.get::<_, String>(12).unwrap_or_default(),
-                post_script: row.get::<_, String>(13).unwrap_or_default(),
-                sort_order: row.get(14)?,
-                create_time: row.get(15)?,
-                create_by: row.get::<_, String>(16).unwrap_or_default(),
-                update_time: row.get(17)?,
-                update_by: row.get::<_, String>(18).unwrap_or_default(),
-                server_update_time: row.get::<_, String>(19).unwrap_or_default(),
+                form_data: serde_json::from_str(&form_data_str).unwrap_or(serde_json::Value::Array(vec![])),
+                request_fields: serde_json::from_str(&request_fields_str).unwrap_or_default(),
+                response_fields: serde_json::from_str(&response_fields_str).unwrap_or_default(),
+                category_id: row.get(11)?,
+                project_id: row.get(12)?,
+                pre_script: row.get::<_, String>(13).unwrap_or_default(),
+                post_script: row.get::<_, String>(14).unwrap_or_default(),
+                sort_order: row.get(15)?,
+                create_time: row.get(16)?,
+                create_by: row.get::<_, String>(17).unwrap_or_default(),
+                update_time: row.get(18)?,
+                update_by: row.get::<_, String>(19).unwrap_or_default(),
+                server_update_time: row.get::<_, String>(20).unwrap_or_default(),
                 deleted: false,
                 current_user_role: String::new(),
-                sync_version: row.get::<_, i32>(20).unwrap_or(1),
+                sync_version: row.get::<_, i32>(21).unwrap_or(1),
             })
         })
         .map_err(DbError::Sql)?;
@@ -68,31 +75,37 @@ pub fn save_saved_request(conn: &DbConn, req: &SavedRequest, mode: DataMode) -> 
     let params_str = req.params.to_string();
     let headers_str = req.headers.to_string();
     let form_body_str = req.form_body.to_string();
+    let form_data_str = req.form_data.to_string();
+    let request_fields_str = serde_json::to_string(&req.request_fields).unwrap_or_else(|_| "[]".to_string());
+    let response_fields_str = serde_json::to_string(&req.response_fields).unwrap_or_else(|_| "[]".to_string());
     // 仅当内容相对当前版本发生变化时才生成新版本（见 resolve_version）
     let snapshot = build_snapshot(req);
     let (version, changed) = resolve_version(&db, req, mode, &snapshot)?;
     // 使用 upsert：已存在相同 id 时按更新字段覆盖（保留原始 create_time/create_by），
     // 避免更新接口缓存时因重复 INSERT 触发 UNIQUE 约束冲突。
     db.execute(
-        "INSERT INTO ch_saved_requests (id, name, method, url, params, headers, body_type, body, form_body,
-         category_id, project_id, pre_script, post_script, sort_order, create_time, create_by, update_time, update_by, server_update_time, version, sync_version, dirty, data_mode)
-         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,1,?22)
+        "INSERT INTO ch_saved_requests (id, name, method, url, params, headers, body_type, body, form_body, form_data,
+         category_id, project_id, pre_script, post_script, sort_order, create_time, create_by, update_time, update_by, server_update_time, version, sync_version, dirty, data_mode, request_fields, response_fields)
+         VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18,?19,?20,?21,?22,1,?23,?24,?25)
          ON CONFLICT(id) DO UPDATE SET
            name=excluded.name, method=excluded.method, url=excluded.url,
            params=excluded.params, headers=excluded.headers, body_type=excluded.body_type, body=excluded.body,
-           form_body=excluded.form_body, category_id=excluded.category_id, project_id=excluded.project_id,
+           form_body=excluded.form_body, form_data=excluded.form_data, category_id=excluded.category_id, project_id=excluded.project_id,
            pre_script=excluded.pre_script, post_script=excluded.post_script, sort_order=excluded.sort_order,
-           update_time=excluded.update_time, server_update_time=excluded.server_update_time, version=?20, dirty=1",
+           request_fields=excluded.request_fields, response_fields=excluded.response_fields,
+           update_time=excluded.update_time, server_update_time=excluded.server_update_time, version=?21, dirty=1",
         params![
             req.id, req.name, req.method, req.url,
             params_str, headers_str, req.body_type,
-            req.body, form_body_str, req.category_id, req.project_id,
+            req.body, form_body_str, form_data_str, req.category_id, req.project_id,
             req.pre_script, req.post_script,
             req.sort_order, req.create_time, req.create_by, req.update_time, req.update_by,
             req.server_update_time,
             version,
             req.sync_version,
             mode.as_db_value(),
+            request_fields_str,
+            response_fields_str,
         ],
     )
     .map_err(DbError::Sql)?;
@@ -109,21 +122,26 @@ pub fn update_saved_request(conn: &DbConn, req: &SavedRequest, mode: DataMode) -
     let params_str = req.params.to_string();
     let headers_str = req.headers.to_string();
     let form_body_str = req.form_body.to_string();
+    let form_data_str = req.form_data.to_string();
+    let request_fields_str = serde_json::to_string(&req.request_fields).unwrap_or_else(|_| "[]".to_string());
+    let response_fields_str = serde_json::to_string(&req.response_fields).unwrap_or_else(|_| "[]".to_string());
     // 仅当内容相对当前版本发生变化时才生成新版本（见 resolve_version）
     let snapshot = build_snapshot(req);
     let (version, changed) = resolve_version(&db, req, mode, &snapshot)?;
     db.execute(
         "UPDATE ch_saved_requests SET name=?2, method=?3, url=?4, params=?5, headers=?6,
-         body_type=?7, body=?8, form_body=?9, category_id=?10, project_id=?11, pre_script=?12, post_script=?13,
-         sort_order=?14, update_time=?15, server_update_time=?16, version=?17, dirty=1
-         WHERE id=?1 AND data_mode=?18",
+         body_type=?7, body=?8, form_body=?9, form_data=?10, category_id=?11, project_id=?12, pre_script=?13, post_script=?14,
+         sort_order=?15, update_time=?16, server_update_time=?17, version=?18, request_fields=?20, response_fields=?21, dirty=1
+         WHERE id=?1 AND data_mode=?19",
         params![
             req.id, req.name, req.method, req.url,
             params_str, headers_str, req.body_type,
-            req.body, form_body_str, req.category_id, req.project_id,
+            req.body, form_body_str, form_data_str, req.category_id, req.project_id,
             req.pre_script, req.post_script,
             req.sort_order, req.update_time, req.server_update_time, version,
             mode.as_db_value(),
+            request_fields_str,
+            response_fields_str,
         ],
     )
     .map_err(DbError::Sql)?;
@@ -151,6 +169,9 @@ fn build_snapshot(req: &SavedRequest) -> String {
         "body_type": req.body_type,
         "body": req.body,
         "form_body": req.form_body,
+        "form_data": req.form_data,
+        "request_fields": req.request_fields,
+        "response_fields": req.response_fields,
         "category_id": req.category_id,
         "pre_script": req.pre_script,
         "post_script": req.post_script,
@@ -183,6 +204,15 @@ fn snapshot_to_request(snapshot: &str) -> Result<SavedRequest, DbError> {
         body_type: s("body_type"),
         body: s("body"),
         form_body: v.get("form_body").cloned().unwrap_or_else(|| serde_json::json!([])),
+        form_data: v.get("form_data").cloned().unwrap_or_else(|| serde_json::json!([])),
+        request_fields: v
+            .get("request_fields")
+            .and_then(|x| serde_json::from_value(x.clone()).ok())
+            .unwrap_or_default(),
+        response_fields: v
+            .get("response_fields")
+            .and_then(|x| serde_json::from_value(x.clone()).ok())
+            .unwrap_or_default(),
         category_id: v
             .get("category_id")
             .and_then(|x| x.as_str())
@@ -358,16 +388,18 @@ pub fn restore_request_version(conn: &DbConn, request_id: &str, version: i32, mo
     let snap = snapshot_to_request(&snapshot)?;
     db.execute(
         "UPDATE ch_saved_requests SET name=?2, method=?3, url=?4, params=?5, headers=?6,
-         body_type=?7, body=?8, form_body=?9, category_id=?10, pre_script=?11, post_script=?12,
-         sort_order=?13, update_time=?14, version=?15, dirty=1
-         WHERE id=?1 AND data_mode=?16",
+         body_type=?7, body=?8, form_body=?9, form_data=?10, category_id=?11, pre_script=?12, post_script=?13,
+         sort_order=?14, update_time=?15, version=?16, request_fields=?18, response_fields=?19, dirty=1
+         WHERE id=?1 AND data_mode=?17",
         params![
             snap.id, snap.name, snap.method, snap.url,
             snap.params.to_string(), snap.headers.to_string(), snap.body_type,
-            snap.body, snap.form_body.to_string(), snap.category_id,
+            snap.body, snap.form_body.to_string(), snap.form_data.to_string(), snap.category_id,
             snap.pre_script, snap.post_script,
             snap.sort_order, now_timestamp(), version,
             mode.as_db_value(),
+            serde_json::to_string(&snap.request_fields).unwrap_or_else(|_| "[]".to_string()),
+            serde_json::to_string(&snap.response_fields).unwrap_or_else(|_| "[]".to_string()),
         ],
     )
     .map_err(DbError::Sql)?;
@@ -400,6 +432,9 @@ mod tests {
             body_type: "none".to_string(),
             body: String::new(),
             form_body: serde_json::json!([]),
+            form_data: serde_json::json!([]),
+            request_fields: vec![],
+            response_fields: vec![],
             category_id: None,
             project_id: None,
             pre_script: String::new(),
@@ -530,6 +565,18 @@ mod tests {
         req.post_script = "post".to_string();
         req.sort_order = 7;
         req.headers = serde_json::json!([{ "key": "X-A", "value": "1" }]);
+        req.request_fields = vec![FieldDoc {
+            key: "id".to_string(),
+            field_type: "integer".to_string(),
+            required: true,
+            description: "用户 ID".to_string(),
+        }];
+        req.response_fields = vec![FieldDoc {
+            key: "data.list[].name".to_string(),
+            field_type: "string".to_string(),
+            required: false,
+            description: "名称".to_string(),
+        }];
         save_saved_request(&conn, &req, DataMode::Online).expect("保存失败");
 
         let snap = get_request_version_snapshot(&conn, &req.id, 1, DataMode::Online).expect("读取快照失败");
@@ -539,6 +586,12 @@ mod tests {
         assert_eq!(snap.pre_script, "pre");
         assert_eq!(snap.post_script, "post");
         assert_eq!(snap.sort_order, 7);
+        assert_eq!(snap.request_fields.len(), 1, "请求字段描述必须随快照往返");
+        assert_eq!(snap.request_fields[0].key, "id");
+        assert!(snap.request_fields[0].required);
+        assert_eq!(snap.request_fields[0].description, "用户 ID");
+        assert_eq!(snap.response_fields.len(), 1, "响应字段描述必须随快照往返");
+        assert_eq!(snap.response_fields[0].key, "data.list[].name");
 
         let _ = std::fs::remove_file(&path);
     }

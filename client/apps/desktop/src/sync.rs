@@ -625,12 +625,22 @@ pub async fn run_pull(
     // 埋点基线：拉取端到端耗时
     let started = std::time::Instant::now();
 
-    // 1. 拉取服务端数据（仅 pull，不上传）；带上游标时服务端只回传变更
+    // 1. 拉取服务端数据（仅 pull，不上传）
+    // 关键：必须回传游标 lastSyncTime，服务端才判定为「增量下发」。
+    // 服务端以 lastSyncTime 是否为空来区分「增量 vs 全量」（空/缺省 => 全量），
+    // 漏传会让每次 pull 都退化为全量，数据量随项目规模线性膨胀。
+    // 游标为上次成功同步时服务端下发的 serverTime（服务端时钟），本地不做时间换算。
     let url = format!("{}/api/v1/sync/pull", server_url);
+    let last_sync_time = config
+        .last_sync_time
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty());
     let (status, body_text) = match post_json_with_retry(
         &url,
         &serde_json::json!({
-            "token": config.auth_token
+            "token": config.auth_token,
+            "lastSyncTime": last_sync_time
         }),
         NETWORK_RETRY_ATTEMPTS,
     )

@@ -35,6 +35,12 @@ public class SavedRequest {
     private String body;
     @TableField(typeHandler = JacksonTypeHandler.class)
     private List<KV> formBody;
+    /** 请求字段描述表（apipost 文档风格） */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<FieldDoc> requestFields;
+    /** 响应字段描述表（apipost 文档风格） */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<FieldDoc> responseFields;
     private String categoryId;
     private String preScript;
     private String postScript;
